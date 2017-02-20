@@ -1,15 +1,19 @@
 # encoding utf-8
 
-from functions import init
+from toolbox import *
+from maze import *
 
 
 def main():
 
     my_maze = init()
+    while not my_maze:
+        my_maze = init()
+
     print my_maze
 
     while True:
-        pass
+        return
 
 
     # my_maze = Maze("test", "easy", easy_map)

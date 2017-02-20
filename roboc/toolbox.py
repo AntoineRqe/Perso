@@ -5,31 +5,18 @@ from errors import *
 from maps import *
 
 
-init_arguments = ("L", "I", "E")
+init_arguments = ("L", "S", "E")
 
 
-def find_entrance(maze):
+def print_init_usage():
     """
-    Find 'E' in a list of string
-    :param maze: the list of string to parse
-    :return: a tuple with the coordinate of the entrance
+    Print all init option available
+    :return:
     """
-    for y, map_line in enumerate(maze):
-        if 'E' in map_line:
-            return str(map_line).index('E'), y
-    return -1
-
-
-def find_exit(maze):
-    """
-    Find 'U' in a list of string
-    :param maze: the list of string to parse
-    :return: a tuple with the coordinate of the entrance
-    """
-    for y, map_line in enumerate(maze):
-        if 'U' in map_line:
-            return str(map_line).index('U'), y
-    return -1
+    print "List of available init option"
+    print "     {} : load a save game".format(init_arguments[0])
+    print "     {} : Start a new game".format(init_arguments[1])
+    print "     {} : Edit a new maze".format(init_arguments[2])
 
 
 def ask_cmd():
@@ -54,31 +41,28 @@ def init():
             raise EmptyOptions(options)
         if len(options) > 1:
             raise OverSizedOptions(options)
+        if options.upper() not in init_arguments:
+            raise WrongOptions(options)
 
     except NumericalOptions as e:
-        print e.message
-        return
+        print e
+        print_init_usage()
     except EmptyOptions as e:
-        print e.message
-        return
+        print e
+        print_init_usage()
     except OverSizedOptions as e:
-        print e.message
-        return
-
-    try:
-        if options.upper() not in init_arguments:
-            raise WrongOptions()
-            return
-        elif options.upper() == "L":
-            print "I want to load a game"
-        elif options.upper() == "I":
-            print "I want to start a random game"
-            return Maze("test", "easy", easy_map)
-        elif options.upper() == "E":
-            print "I want to edit a maze"
-        else:
-            raise WrongOptions()
-
+        print e
+        print_init_usage()
     except WrongOptions as e:
-        print e.message
-        return
+        print e
+        print_init_usage()
+
+    if options.upper() == init_arguments[0]:
+        print "I want to load a game"
+    elif options.upper() == init_arguments[1]:
+        print "I want to start a random game"
+        return Maze("test", "easy", easy_map)
+    elif options.upper() == init_arguments[2]:
+        print "I want to edit a maze"
+
+

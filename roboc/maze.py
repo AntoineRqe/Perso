@@ -1,7 +1,29 @@
 # encoding utf-8
 
-from  import find_entrance, find_exit
+from toolbox import *
 from errors import *
+
+
+def find_entrance(maze):
+    """
+    Find 'E' in a list of string
+    :param maze: the list of string to parse
+    :return: a tuple with the coordinate of the entrance
+    """
+    for y, map_line in enumerate(maze):
+        if 'E' in map_line:
+            return str(map_line).index('E'), y
+
+
+def find_exit(maze):
+    """
+    Find 'U' in a list of string
+    :param maze: the list of string to parse
+    :return: a tuple with the coordinate of the entrance
+    """
+    for y, map_line in enumerate(maze):
+        if 'U' in map_line:
+            return str(map_line).index('U'), y
 
 
 class Maze:
