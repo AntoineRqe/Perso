@@ -1,7 +1,7 @@
 # encoding utf-8
 
-from exceptions import *
-from functions import *
+from  import find_entrance, find_exit
+from errors import *
 
 
 class Maze:
@@ -19,7 +19,7 @@ class Maze:
         self.size = self.len()
         self.entrance_position = find_entrance(self.map)
         self.exit_position = find_exit(self.map)
-        self.robot_position = find_entrance(self.map)
+        self.robot_position = self.entrance_position
 
     def __repr__(self):
         map_str = str()
@@ -48,6 +48,8 @@ class Maze:
 
         map_list = list()
         map_str = str()
+        x = 0
+        y = 0
 
         if (0 > x) or (x > self.size[0]):
             raise Exception()
@@ -87,14 +89,14 @@ class Maze:
         cmd_direction = str(cmd[0])
         cmd_steps = str(cmd[1:])
 
-        if cmd_direction.upper() not in ('N', 'S', 'E', 'O'):
-            return ()
+        if cmd_direction.upper() not in ('N', 'S', 'E', 'O', 'Q'):
+            raise InvalidCommands(cmd_direction.upper())
         if not cmd_steps.isdigit():
-            return ()
+            raise InvalidCommands(cmd_direction.upper())
 
-        #------------------------
+        # ------------------------
         # Calculate next position
-        #------------------------
+        # ------------------------
         itinary = list()
 
         if cmd_direction == 'N':
@@ -121,24 +123,21 @@ class Maze:
             if 'X' in itinary:
                 return ()
 
-        print itinary
-        return cmd_direction, cmd_steps
+    def calculate_coordinate(self, direction, step):
+        """
+        Calculate new coordinate to move the robot
+        :param direction: direction to move to
+        :param step: number of step to move
+        :return: tuple of the new coordinate
+        """
 
-     def calculate_coordinate(self, direction, step):
-         """
-         Calculate new coordinate to move the robot
-         :param direction: direction to move to
-         :param step: number of step to move
-         :return: tuple of the new coordinate
-         """
-
-         if direction == 'N':
+        if direction == 'N':
             return self.robot_position[0], self.robot_position[1] - step
-         elif direction == 'S':
+        elif direction == 'S':
             return self.robot_position[0], self.robot_position[1] + step
-         elif direction == 'E':
+        elif direction == 'E':
             return self.robot_position[0] + step, self.robot_position[1]
-         elif direction == 'O':
+        elif direction == 'O':
             return self.robot_position[0] - step , self.robot_position[1]
 
 
