@@ -9,7 +9,10 @@ E = entrance
 U = exit
 """
 
-easy_map = [
+map_catalog = dict()
+map_catalog_str = list()
+
+easy = [
     "XXEXXXXXXX",
     "X        X",
     "X        X",
@@ -21,12 +24,22 @@ easy_map = [
     "XXXXXXXXXX"
 ]
 
-medium_map = [
-    "XXEXXXXXXXXXXX",
-    "X            X",
-    "XXXXX   XXXXXX",
-    "XXXXX   XXXXXX",
-    "XX     XXXXXXX",
-    "X      U     X",
-    "XXXXXXXXXXXXXX"
+medium = [
+    "XXEXXXXXXX",
+    "X        X",
+    "XXXXXXXX X",
+    "X        X",
+    "X XXXXXXXX",
+    "X        X",
+    "XXXXXXXX X",
+    "X   U    X",
+    "XXXXXXXXXX"
 ]
+
+map_catalog.update({"easy": easy})
+map_catalog.update({"medium": medium})
+
+for name in map_catalog.keys():
+    map_catalog_str.append(str(name))
+
+

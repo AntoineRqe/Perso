@@ -3,6 +3,7 @@
 from toolbox import *
 from errors import *
 from pickle import *
+from maps import *
 import os
 
 
@@ -30,16 +31,15 @@ def find_exit(maze):
 
 class Maze:
 
-    def __init__(self, name, difficulty, map):
-        if (type(name) != str) | (type(difficulty) != str):
+    def __init__(self, name):
+        if type(name) != str:
             raise TypeError("name, difficulty are not a string")
 
-        if type(map) != list:
+        if type(map_catalog[name]) != list:
             raise TypeError("map is not a list")
 
         self.name = name
-        self.difficulty = difficulty
-        self.map = map
+        self.map = map_catalog[name]
         self.size = self.len()
         self.entrance_position = find_entrance(self.map)
         self.exit_position = find_exit(self.map)

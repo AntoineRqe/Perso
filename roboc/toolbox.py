@@ -3,6 +3,7 @@
 from maze import *
 from errors import *
 from maps import *
+import glob
 
 
 init_arguments = ("L", "S", "E")
@@ -50,6 +51,15 @@ def print_cmd_usage():
     print "     {} : Save and quit".format(command_arguments[4])
 
 
+def find_file_extension(file_extension):
+    """
+    Find all file with given extension
+    :param file_extension: extension to look for
+    :return: a list of all files found
+    """
+    return glob.glob('*.{}'.format(file_extension))
+
+
 def ask_cmd():
     """
     Function to ask command to move the robot
@@ -85,6 +95,32 @@ def ask_cmd():
         return "-1", -1
 
     return cmd_direction, int(cmd_steps)
+
+
+def load(save_file):
+    """
+    :param save_file: name of the file to load
+    :return maze object loaded from saved file
+    Load a previous saved game
+    """
+
+    if type(save_file) != str:
+        print "Need to give a string as argument"
+        return None
+
+    if not os.path.isfile(save_file):
+        print "{} doesn't exist, nothing to load".format(save_file)
+        return None
+
+    if os.stat(save_file).st_size == 0:
+        print "No date to load in {}".format(save_file)
+        return None
+
+    with open(save_file, 'rb') as save:
+        my_unpickler = Unpickler(save)
+        my_maze = my_unpickler.load()
+
+    return my_maze
 
 
 def init():
@@ -124,11 +160,21 @@ def init():
         print_init_usage()
 
     if options.upper() == init_arguments[0]:
-        print "I want to load a game"
+        print "Saves available : {}".format(find_file_extension("sav"))
+        my_maze = None
+        save = str(raw_input("Which file you want to load?\r\n"))
+        my_maze = load(save)
+        while my_maze is None:
+            save = str(raw_input("Which file you want to load?\r\n"))
+            my_maze = load(save)
+        return my_maze
+
     elif options.upper() == init_arguments[1]:
-        print "I want to start a predefined game"
-        print "---------------------------------"
-        return Maze("test", "easy", easy_map)
+        print "I want to start a game"
+        print "Maps available are {}".format(map_catalog_str)
+        name = str(raw_input("What map do you want?\r\n"))
+        return Maze(name)
+
     elif options.upper() == init_arguments[2]:
         print "I want to edit a maze"
 
