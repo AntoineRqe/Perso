@@ -42,6 +42,7 @@ class Maze:
         self.entrance_position = find_entrance(self.map)
         self.exit_position = find_exit(self.map)
         self.robot_position = self.entrance_position
+        self.init_robot_position()
 
     def __repr__(self):
         map_str = str()
@@ -56,110 +57,127 @@ class Maze:
         """
         return len(self.map[0]), len(self.map)
 
-    def update_robot_position(self, cmd):
+    def init_robot_position(self):
+        """
+        Move the robot to the entrance of the maze
+        """
+        map_line = list(self.map[self.entrance_position[1]])
+        map_line[self.entrance_position[0]] = "R"
+        map_str = "".join(map_line)
+        self.map[self.entrance_position[1]] = map_str
+
+    def update_robot_position(self, direction, step):
         """
         Update position of the robot into the maze
-        :param cmd: command to move the robot
-        :return:
+        :param direction: direction for the robot to move
+        :param step: number of step to do
         """
 
-        cmd_direction = str(cmd[0]).upper()
-        cmd_steps = str(cmd[1:]).upper()
+        new_x, new_y = self.calculate_coordinate(direction, step)
 
-        self.parse_command(cmd)
-
-        map_list = list()
-        map_str = str()
-        x = 0
-        y = 0
-
-        if (0 > x) or (x > self.size[0]):
-            raise Exception()
-
-        if (0 > y) or (y > self.size[1]):
-            raise Exception()
-
-        for letter in self.map[self.robot_position[1]]:
-            map_list.append(letter)
-
-        if (self.entrance_position[0], self.entrance_position[1]) == (self.robot_position[0], self.robot_position[1]):
-            map_list[self.robot_position[0]] = 'E'
+        # -------------------------------
+        # Delete previous robot position
+        # -------------------------------
+        map_str = str(self.map[self.robot_position[1]])
+        if self.robot_position == self.entrance_position:
+            index = map_str.index("R")
+            map_list = list(map_str)
+            map_list[index] = 'E'
         else:
+            map_list = list(map_str)
             map_list[self.robot_position[0]] = ' '
 
-        map_str = "".join(map_list)
-        self.map[self.robot_position[1]] = map_str
+        self.map[self.robot_position[1]] = "".join(map_list)
+        # -------------------------------
+        # Update robot position
+        # -------------------------------
+        map_str = str(self.map[new_y])
+        map_list = list(map_str)
+        map_list[new_x] = 'R'
+        self.map[new_y] = "".join(map_list)
 
-        map_list = list()
-        map_str = str()
+        self.robot_position = (new_x, new_y)
 
-        for letter in self.map[y]:
-            map_list.append(letter)
-
-        map_list[x] = 'R'
-        map_str = "".join(map_list)
-
-        self.map[y] = map_str
-        self.robot_position = (x, y)
-
-    def parse_command(self, cmd):
+    def parse_command(self, cmd_direction, cmd_steps):
         """
         Parse the command given to mode
-        :param cmd: command to be parsed
+        :param cmd_direction: command to be parsed
+        :param cmd_steps: number of step in that direction
         :return: True if command valid, False otherwise
         """
-        cmd_direction = str(cmd[0])
-        cmd_steps = str(cmd[1:])
 
-        if cmd_direction.upper() not in ('N', 'S', 'E', 'O', 'Q'):
-            raise InvalidCommands(cmd_direction.upper())
-        if not cmd_steps.isdigit():
-            raise InvalidCommands(cmd_direction.upper())
+        itinerary = list()
+        ret = True
 
-        # ------------------------
-        # Calculate next position
-        # ------------------------
-        itinary = list()
+        try:
+            if cmd_direction == 'N':
+                for i in range(0, cmd_steps + 1):
+                    itinerary.append(self.map[(self.robot_position[1]) - i][self.robot_position[0]])
+                if 'X' in itinerary:
+                    ret = False
 
-        if cmd_direction == 'N':
-            for i in range(cmd_steps):
-                itinary.append(self.map[(self.robot_position[1]) - i][self.robot_position[0]])
-            if 'X' in itinary:
-                return ()
+            elif cmd_direction == 'S':
+                for i in range(0, cmd_steps + 1):
+                    itinerary.append(self.map[(self.robot_position[1]) + i][self.robot_position[0]])
+                if 'X' in itinerary:
+                    ret = False
 
-        elif cmd_direction == 'S':
-            for i in range(cmd_steps):
-                itinary.append(self.map[(self.robot_position[1]) + i][self.robot_position[0]])
-            if 'X' in itinary:
-                return ()
+            elif cmd_direction == 'E':
+                for i in range(0, cmd_steps + 1):
+                    itinerary.append(self.map[self.robot_position[1]][self.robot_position[0] + i])
+                if 'X' in itinerary:
+                    ret = False
 
-        elif cmd_direction == 'E':
-            for i in range(cmd_steps):
-                itinary.append(self.map[self.robot_position[1]][self.robot_position[0]] + i)
-            if 'X' in itinary:
-                return ()
+            elif cmd_direction == 'W':
+                for i in range(0, cmd_steps + 1):
+                    itinerary.append(self.map[self.robot_position[1]][self.robot_position[0] - i])
+                if 'X' in itinerary:
+                    ret = False
 
-        elif cmd_direction == 'O':
-            for i in range(cmd_steps):
-                itinary.append(self.map[self.robot_position[1]][self.robot_position[0] - i])
-            if 'X' in itinary:
-                return ()
+            elif self.calculate_coordinate(cmd_direction, cmd_steps) == (-1, -1):
+                ret = False
+
+            print "itinerary : {}".format(itinerary)
+
+        except IndexError as e:
+            print "You have encounter an obstacle with move {}{}".format(cmd_direction, cmd_steps)
+            ret = False
+
+        if not ret:
+            print "You have encounter an obstacle with move {}{}".format(cmd_direction, cmd_steps)
+            print "Please, Enter new command"
+
+        return ret
 
     def calculate_coordinate(self, direction, step):
         """
         Calculate new coordinate to move the robot
         :param direction: direction to move to
         :param step: number of step to move
-        :return: tuple of the new coordinate
+        :return: tuple of the new coordinate, (-1, -1) if invalids coordinate
         """
 
-        if direction == 'N':
-            return self.robot_position[0], self.robot_position[1] - step
-        elif direction == 'S':
-            return self.robot_position[0], self.robot_position[1] + step
-        elif direction == 'E':
-            return self.robot_position[0] + step, self.robot_position[1]
-        elif direction == 'O':
-            return self.robot_position[0] - step , self.robot_position[1]
+        if direction == "N":
+            x, y = self.robot_position[0], self.robot_position[1] - step
+        elif direction == "E":
+            x, y = self.robot_position[0] + step, self.robot_position[1]
+        elif direction == "S":
+            x, y = self.robot_position[0], self.robot_position[1] + step
+        elif direction == "W":
+            x, y = self.robot_position[0] - step , self.robot_position[1]
 
+        if x < 0 or y < 0:
+            raise CoordinateOutOfRange((x,y))
+            return -1, -1
 
+        return x, y
+
+    def is_maze_resolved(self):
+        """
+        Check if Robot found the exit
+        :return: True if exit found, False otherwise
+        """
+        if self.robot_position == self.exit_position:
+            return True
+        else:
+            return False

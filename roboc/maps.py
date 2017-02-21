@@ -25,7 +25,7 @@ medium_map = [
     "XXEXXXXXXXXXXX",
     "X            X",
     "XXXXX   XXXXXX",
-    "XXXXX XXXXXXXX",
+    "XXXXX   XXXXXX",
     "XX     XXXXXXX",
     "X      U     X",
     "XXXXXXXXXXXXXX"

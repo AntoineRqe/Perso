@@ -5,7 +5,7 @@ from maze import *
 
 
 def main():
-
+    print_usage()
     my_maze = init()
     while not my_maze:
         my_maze = init()
@@ -13,18 +13,15 @@ def main():
     print my_maze
 
     while True:
-        return
+        (direction, step) = ask_cmd()
+        while direction == "-1" or direction == -1 or not my_maze.parse_command(direction, step):
+            (direction, step) = ask_cmd()
 
-
-    # my_maze = Maze("test", "easy", easy_map)
-    # print "Maze of dimension {}\r\n{}".format(my_maze.len(), my_maze)
-    # my_maze.update_robot_position(3, 3)
-    # print "Maze of dimension {}\r\n{}".format(my_maze.len(), my_maze)
-    # my_maze.update_robot_position(4, 4)
-    # print "Maze of dimension {}\r\n{}".format(my_maze.len(), my_maze)
-    # my_maze.update_robot_position(5, 6)
-    # print "Maze of dimension {}\r\n{}".format(my_maze.len(), my_maze)
-
+        my_maze.update_robot_position(direction, step)
+        print my_maze
+        if my_maze.is_maze_resolved():
+            print "Bravo, You exited the maze!"
+            break
 
 if __name__ == "__main__":
     main()

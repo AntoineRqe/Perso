@@ -71,3 +71,15 @@ class InvalidCommands(Exception):
 
     def __str__(self):
             return "Command {} is not available".format(self.command)
+
+
+class CoordinateOutOfRange(Exception):
+    """
+    Exception raised when robot coordinates are out of maze range
+    """
+
+    def __init__(self, coordinate):
+        self.coordinate = coordinate
+
+    def __str__(self):
+            return "coordinates {} are out of maze range".format(self.coordinate)
