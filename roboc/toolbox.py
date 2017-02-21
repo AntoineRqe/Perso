@@ -62,7 +62,7 @@ def ask_cmd():
         cmd_steps = str(cmd[1:])
 
         if cmd_direction == "Q":
-            return "0", 0
+            return cmd_direction, 0
         elif not cmd:
             raise EmptyOptions(cmd)
         elif cmd_direction not in command_arguments:

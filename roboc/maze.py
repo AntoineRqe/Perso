@@ -2,6 +2,8 @@
 
 from toolbox import *
 from errors import *
+from pickle import *
+import os
 
 
 def find_entrance(maze):
@@ -134,6 +136,10 @@ class Maze:
                 if 'X' in itinerary:
                     ret = False
 
+            elif cmd_direction == 'Q':
+                self.save()
+                ret = True
+
             elif self.calculate_coordinate(cmd_direction, cmd_steps) == (-1, -1):
                 ret = False
 
@@ -181,3 +187,27 @@ class Maze:
             return True
         else:
             return False
+
+    def save(self):
+        """
+        Save the game in binary file name.sav and quit the game
+        """
+        confirm = True
+        file_name = "{}.sav".format(self.name)
+        print "File to save {}".format(file_name)
+
+        if os.path.isfile(file_name):
+            ret = str(raw_input("Are you sure you want to erase save {}? (Y/N)\r\n".format(file_name)))
+            while ret.upper() not in ("Y", "N"):
+                ret = str(raw_input("Are you sure you want to erase save {}? (Y/N)\r\n".format(file_name)))
+            if ret.upper() == "N":
+                confirm = False
+            else:
+                confirm = True
+
+        if confirm:
+            with open(file_name, 'wb') as save:
+                my_pickler = Pickler(save)
+                my_pickler.dump(self)
+            print "File {} saved".format(file_name)
+        exit()
