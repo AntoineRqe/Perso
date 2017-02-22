@@ -123,11 +123,32 @@ def load(save_file):
     return my_maze
 
 
+def load_map():
+    """
+    Load all map available in the folder
+    """
+    my_maze = None
+    map_list = find_file_extension("map")
+    for map in map_list:
+        with open(map, 'rb') as save:
+            my_unpickler = Unpickler(save)
+            my_maze = my_unpickler.load()
+
+    if my_maze is not None:
+        map_catalog.update(my_maze)
+        for map_name in my_maze.keys():
+            map_catalog_str.append(map_name)
+
+
 def init():
     """
     Initialization to generate or load a given maze
     :return: return a maze
     """
+
+    # Load all maps available before starting.
+    load_map()
+
     print "Time to start the game"
     print "You can : Start a predefined game(S)"
     print "          Load a game previously saved(L)"
@@ -172,10 +193,52 @@ def init():
     elif options.upper() == init_arguments[1]:
         print "I want to start a game"
         print "Maps available are {}".format(map_catalog_str)
-        name = str(raw_input("What map do you want?\r\n"))
-        return Maze(name)
+        your_choice = str(raw_input("What map do you want?\r\n"))
+        return Maze(your_choice)
 
     elif options.upper() == init_arguments[2]:
-        print "I want to edit a maze"
+        new_maze = list()
+        new_line = str()
+        i = 0
+        confirm = True
+        has_entrance = 0
+        has_exit = 0
 
+        new_name = str(raw_input("Name your new maze?\r\n"))
+        print "To edit {}, please enter line by line your maze, the press Q when over".format(new_name)
+        print "Make sure you have one entrance (E) and one Exit (U)"
+        while new_line != "Q":
+            new_line = str(raw_input("Enter line {}\r\n".format(i)))
+            if "E" in new_line:
+                has_entrance += 1
+            if "U" in new_line:
+                has_exit += 1
+            if new_line.upper() == "Q":
+                break
+            new_maze.append(new_line)
+            i += 1
+
+        if has_entrance != 1 or has_exit != 1:
+            print "You can only have one entrance {} and one exit {}, quit program".format(has_entrance, has_exit)
+            exit()
+
+        file_name = "{}.map".format(new_name)
+        print "Map to save {}".format(file_name)
+
+        if os.path.isfile(file_name):
+            ret = str(raw_input("Are you sure you want to erase map {}? (Y/N)\r\n".format(file_name)))
+            while ret.upper() not in ("Y", "N"):
+                ret = str(raw_input("Are you sure you want to erase save {}? (Y/N)\r\n".format(file_name)))
+            if ret.upper() == "N":
+                confirm = False
+            else:
+                confirm = True
+
+        if confirm:
+            with open(file_name, 'wb') as save:
+                my_pickler = Pickler(save)
+                my_pickler.dump({new_name:new_maze})
+            print "Map {} saved".format(file_name)
+
+        exit()
 
