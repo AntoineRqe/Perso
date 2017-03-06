@@ -74,6 +74,10 @@ def ask_cmd():
     try:
         print("------------------------------------------")
         cmd = input("So, where does the robot go?\r\n")
+
+        if len(cmd) == 1 and cmd.upper() in command_arguments:
+            return cmd.upper(), 1
+
         cmd_direction = str(cmd[0]).upper()
         cmd_steps = str(cmd[1:])
 
