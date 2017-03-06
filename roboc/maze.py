@@ -1,7 +1,7 @@
 # encoding utf-8
 
 from toolbox import *
-from errors import *
+from custom_errors import *
 from pickle import *
 from maps import *
 import os
@@ -14,8 +14,8 @@ def find_entrance(maze):
     :return: a tuple with the coordinate of the entrance
     """
     for y, map_line in enumerate(maze):
-        if 'E' in map_line:
-            return str(map_line).index('E'), y
+        if 'X' in map_line:
+            return str(map_line).index('X'), y
 
 
 def find_exit(maze):
@@ -31,15 +31,15 @@ def find_exit(maze):
 
 class Maze:
 
-    def __init__(self, name):
+    def __init__(self, name, maze_list):
         if type(name) != str:
             raise TypeError("name, difficulty are not a string")
 
-        if type(map_catalog[name]) != list:
+        if type(maze_list) != list:
             raise TypeError("map is not a list")
 
         self.name = name
-        self.map = map_catalog[name]
+        self.map = maze_list
         self.size = self.len()
         self.entrance_position = find_entrance(self.map)
         self.exit_position = find_exit(self.map)
@@ -115,25 +115,25 @@ class Maze:
             if cmd_direction == 'N':
                 for i in range(0, cmd_steps + 1):
                     itinerary.append(self.map[(self.robot_position[1]) - i][self.robot_position[0]])
-                if 'X' in itinerary:
+                if 'O' in itinerary:
                     ret = False
 
             elif cmd_direction == 'S':
                 for i in range(0, cmd_steps + 1):
                     itinerary.append(self.map[(self.robot_position[1]) + i][self.robot_position[0]])
-                if 'X' in itinerary:
+                if 'O' in itinerary:
                     ret = False
 
             elif cmd_direction == 'E':
                 for i in range(0, cmd_steps + 1):
                     itinerary.append(self.map[self.robot_position[1]][self.robot_position[0] + i])
-                if 'X' in itinerary:
+                if 'O' in itinerary:
                     ret = False
 
             elif cmd_direction == 'W':
                 for i in range(0, cmd_steps + 1):
                     itinerary.append(self.map[self.robot_position[1]][self.robot_position[0] - i])
-                if 'X' in itinerary:
+                if 'O' in itinerary:
                     ret = False
 
             elif cmd_direction == 'Q':
@@ -143,15 +143,15 @@ class Maze:
             elif self.calculate_coordinate(cmd_direction, cmd_steps) == (-1, -1):
                 ret = False
 
-            print "itinerary : {}".format(itinerary)
+            print("itinerary : {}".format(itinerary))
 
         except IndexError as e:
-            print "You have encounter an obstacle with move {}{}".format(cmd_direction, cmd_steps)
+            print("You have encounter an obstacle with move {}{}".format(cmd_direction, cmd_steps))
             ret = False
 
         if not ret:
-            print "You have encounter an obstacle with move {}{}".format(cmd_direction, cmd_steps)
-            print "Please, Enter new command"
+            print("You have encounter an obstacle with move {}{}".format(cmd_direction, cmd_steps))
+            print("Please, Enter new command")
 
         return ret
 
@@ -194,12 +194,12 @@ class Maze:
         """
         confirm = True
         file_name = "{}.sav".format(self.name)
-        print "File to save {}".format(file_name)
+        print("File to save {}".format(file_name))
 
         if os.path.isfile(file_name):
-            ret = str(raw_input("Are you sure you want to erase save {}? (Y/N)\r\n".format(file_name)))
+            ret = str(input("Are you sure you want to erase save {}? (Y/N)\r\n".format(file_name)))
             while ret.upper() not in ("Y", "N"):
-                ret = str(raw_input("Are you sure you want to erase save {}? (Y/N)\r\n".format(file_name)))
+                ret = str(input("Are you sure you want to erase save {}? (Y/N)\r\n".format(file_name)))
             if ret.upper() == "N":
                 confirm = False
             else:
@@ -209,5 +209,5 @@ class Maze:
             with open(file_name, 'wb') as save:
                 my_pickler = Pickler(save)
                 my_pickler.dump(self)
-            print "File {} saved".format(file_name)
+            print("File {} saved".format(file_name))
         exit()
