@@ -6,6 +6,7 @@ import os
 
 init_arguments = ("L", "S", "E")
 command_arguments = ("N", "E", "S", "W", "Q")
+save_path = os.path.join(os.getcwd(), "Saves")
 
 
 def print_usage():
@@ -57,13 +58,13 @@ def find_file_extension(file_path, file_extension):
     :return: a list of all files found
     """
 
-    maps_files = [f for f in os.listdir(file_path) if os.path.isfile(os.path.join(file_path, f))]
-    for f in maps_files:
+    files = [f for f in os.listdir(file_path) if os.path.isfile(os.path.join(file_path, f))]
+    for f in files:
         extension = f.split(".")[-1]
         if extension != file_extension:
-            maps_files.remove(f)
+            files.remove(f)
 
-    return maps_files
+    return files
 
 
 def ask_cmd():
@@ -107,27 +108,29 @@ def ask_cmd():
     return cmd_direction, int(cmd_steps)
 
 
-def load(save_file):
+def load(full_path_save_file):
     """
-    :param save_file: name of the file to load
+    :param full_path_save_file: full path of the name of the file to load
     :return maze object loaded from saved file
     Load a previous saved game
     """
 
-    if type(save_file) != str:
+    if type(full_path_save_file) != str:
         print("Need to give a string as argument")
         return None
 
-    if not os.path.isfile(save_file):
-        print("{} doesn't exist, nothing to load".format(save_file))
+    if not os.path.isfile(full_path_save_file):
+        print("{} doesn't exist, nothing to load".format(full_path_save_file))
         return None
 
-    if os.stat(save_file).st_size == 0:
-        print("No date to load in {}".format(save_file))
+    if os.stat(full_path_save_file).st_size == 0:
+        print("No date to load in {}".format(full_path_save_file))
         return None
 
-    with open(save_file, 'rb') as save:
+    with open(full_path_save_file, 'rb') as save:
         my_unpickler = Unpickler(save)
         my_maze = my_unpickler.load()
+
+    print("{} has been loaded".format(full_path_save_file))
 
     return my_maze

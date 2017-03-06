@@ -1,9 +1,7 @@
 # encoding utf-8
 
-from toolbox import *
 from custom_errors import *
 from pickle import *
-from maps import *
 import os
 
 
