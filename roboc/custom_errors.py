@@ -83,3 +83,15 @@ class CoordinateOutOfRange(Exception):
 
     def __str__(self):
             return "coordinates {} are out of maze range".format(self.coordinate)
+
+
+class EncounterObstacle(Exception):
+    """
+    Exception raised when robot coordinates are out of maze range
+    """
+
+    def __init__(self, itinerary):
+        self.itinerary = itinerary
+
+    def __str__(self):
+            return "Itinerary {} encounters an obstacle".format(self.itinerary)

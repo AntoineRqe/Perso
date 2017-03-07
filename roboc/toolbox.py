@@ -107,46 +107,6 @@ def remove_file_extension(full_name):
 
     return basename
 
-def ask_cmd():
-    """
-    Function to ask command to move the robot
-    :return: string of given cmd
-    """
-    try:
-        print("------------------------------------------")
-        cmd = input("So, where does the robot go?\r\n")
-
-        if len(cmd) == 1 and cmd.upper() in command_arguments:
-            return cmd.upper(), 1
-
-        cmd_direction = str(cmd[0]).upper()
-        cmd_steps = str(cmd[1:])
-
-        if cmd_direction == "Q":
-            return cmd_direction, 0
-        elif not cmd:
-            raise EmptyOptions(cmd)
-        elif cmd_direction not in command_arguments:
-            raise InvalidCommands(cmd_direction)
-        elif not cmd_steps.isdigit():
-            raise InvalidCommands(cmd_direction)
-
-    except InvalidCommands as e:
-        print(e)
-        print_cmd_usage()
-        return "-1", -1
-
-    except EmptyOptions as e:
-        print(e)
-        print_cmd_usage()
-        return "-1", -1
-
-    except IndexError as e:
-        print_cmd_usage()
-        return "-1", -1
-
-    return cmd_direction, int(cmd_steps)
-
 
 def load(full_path_save_file):
     """
