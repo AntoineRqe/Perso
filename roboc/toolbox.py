@@ -17,9 +17,9 @@ def print_usage():
     print("Welcome in the maze game.")
     print("With your robot, you have to exit the maze")
     print("On the map display")
-    print("\tX : Wall")
-    print("\tR : Robot")
-    print("\tE : Entrance")
+    print("\tO : Wall")
+    print("\tX : Robot")
+    print("\t. : Door")
     print("\tU : Exit")
     print("You can move the robot using a direction(N,W,S,E) and number of steps")
     print("Example of use:")
@@ -58,14 +58,54 @@ def find_file_extension(file_path, file_extension):
     :return: a list of all files found
     """
 
+    if type(file_path) != str or type(file_extension) != str:
+        return None
+
     files = [f for f in os.listdir(file_path) if os.path.isfile(os.path.join(file_path, f))]
+    final_file = list(files)
+
     for f in files:
         extension = f.split(".")[-1]
         if extension != file_extension:
-            files.remove(f)
+            final_file.remove(f)
 
-    return files
+    return final_file
 
+
+def add_file_extension(name, extension):
+    """
+    Add an extension to a name file
+    :param name: basic name of the file
+    :param extension: to be added at end of name
+    :return: full name with extension
+    """
+
+    if type(name) != str or type(extension) != str:
+        return None
+    elif len(name) <= 0 or len(extension) <= 0:
+        return None
+
+    full_name = "{}.{}".format(name, extension)
+
+    return full_name
+
+
+def remove_file_extension(full_name):
+    """
+    Remove extension to full name
+    :param full_name: full name of the file to be castrated
+    :return: name with no extension
+    """
+    if type(full_name) != str:
+        return None
+    elif len(full_name) <= 0:
+        return None
+    elif "." not in full_name:
+        return None
+
+    basename = str(full_name).split(".")[0]
+
+    return basename
 
 def ask_cmd():
     """

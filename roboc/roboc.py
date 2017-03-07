@@ -12,8 +12,8 @@ def init():
     """
 
     # Load all maps available before starting.
-    maps = Maps()
-    maps.load_map()
+    labyrinths = Maps()
+    labyrinths.load_map(os.path.join(os.getcwd(), "Maps"))
 
     print("Time to start the game")
     print("You can : Start a predefined game(S)")
@@ -46,6 +46,7 @@ def init():
         print (e)
         print_init_usage()
 
+    # Load a previous saved game
     if options.upper() == init_arguments[0]:
         print("Saves available : {}".format(find_file_extension(os.path.join(os.getcwd()), "sav")))
         my_maze = None
@@ -56,12 +57,26 @@ def init():
             my_maze = load(save)
         return my_maze
 
+    # Start a new game
     elif options.upper() == init_arguments[1]:
         print("I want to start a game")
-        print("Maps available are {}".format(maps.map_catalog_str))
-        your_choice = str(input("What map do you want?\r\n"))
-        return Maze(your_choice, maps.map_catalog[your_choice+".txt"])
+        print("Maps available are :".format(labyrinths.names))
 
+        for index, name in enumerate(labyrinths.names):
+            print("\t {} - {}".format(index, name))
+
+        try:
+            your_choice = int(input("What map do you want?\r\n"))
+        except ValueError:
+            your_choice = ""
+            pass
+
+        while type(your_choice) != int or your_choice < 0 or your_choice >= len(labyrinths.names):
+            your_choice = int(input("What map do you want?\r\n"))
+
+        return Maze(labyrinths.drawings[labyrinths.names[your_choice]])
+
+    # Edit a new map
     elif options.upper() == init_arguments[2]:
         new_maze = list()
         new_line = str()
@@ -75,7 +90,7 @@ def init():
         print("Make sure you have one entrance (E) and one Exit (U)")
         while new_line != "Q":
             new_line = str(input("Enter line {}\r\n".format(i)))
-            if "E" in new_line:
+            if "R" in new_line:
                 has_entrance += 1
             if "U" in new_line:
                 has_exit += 1
@@ -107,6 +122,7 @@ def init():
             print("Map {} saved".format(file_name))
 
         exit()
+
 
 def main():
     print_usage()

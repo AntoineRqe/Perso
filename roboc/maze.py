@@ -29,20 +29,21 @@ def find_exit(maze):
 
 class Maze:
 
-    def __init__(self, name, maze_list):
-        if type(name) != str:
-            raise TypeError("name, difficulty are not a string")
+    def __init__(self, map_drawing):
 
-        if type(maze_list) != list:
-            raise TypeError("map is not a list")
+        if type(map_drawing) != list or len(map_drawing) <= 0:
+            raise TypeError("Wrong type give")
 
-        self.name = name
-        self.map = maze_list
+        self.map = list(map_drawing)
+        self.clean_map = list(map_drawing)
         self.size = self.len()
-        self.entrance_position = find_entrance(self.map)
         self.exit_position = find_exit(self.map)
-        self.robot_position = self.entrance_position
-        self.init_robot_position()
+        self.robot_position = find_entrance(self.map)
+
+        # Remove robot position from clean map
+        robot_line = list(self.clean_map[self.robot_position[1]])
+        robot_line[self.robot_position[0]] = " "
+        self.clean_map[self.robot_position[1]] = "".join(robot_line)
 
     def __repr__(self):
         map_str = str()
@@ -57,15 +58,6 @@ class Maze:
         """
         return len(self.map[0]), len(self.map)
 
-    def init_robot_position(self):
-        """
-        Move the robot to the entrance of the maze
-        """
-        map_line = list(self.map[self.entrance_position[1]])
-        map_line[self.entrance_position[0]] = "R"
-        map_str = "".join(map_line)
-        self.map[self.entrance_position[1]] = map_str
-
     def update_robot_position(self, direction, step):
         """
         Update position of the robot into the maze
@@ -78,21 +70,12 @@ class Maze:
         # -------------------------------
         # Delete previous robot position
         # -------------------------------
-        map_str = str(self.map[self.robot_position[1]])
-        if self.robot_position == self.entrance_position:
-            index = map_str.index("R")
-            map_list = list(map_str)
-            map_list[index] = 'E'
-        else:
-            map_list = list(map_str)
-            map_list[self.robot_position[0]] = ' '
+        self.map[self.robot_position[1]] = self.clean_map[self.robot_position[1]]
 
-        self.map[self.robot_position[1]] = "".join(map_list)
         # -------------------------------
         # Update robot position
         # -------------------------------
-        map_str = str(self.map[new_y])
-        map_list = list(map_str)
+        map_list = list(self.map[new_y])
         map_list[new_x] = 'R'
         self.map[new_y] = "".join(map_list)
 
