@@ -88,3 +88,6 @@ class ToolboxTest(unittest.TestCase):
 
         result = remove_file_extension(incorrect_name)
         self.assertEqual(result, None)
+
+if __name__ == "__main__":
+    unittest.main()

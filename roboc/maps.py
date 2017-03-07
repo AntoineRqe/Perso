@@ -3,13 +3,13 @@
 from toolbox import *
 import os
 
+
 class Maps:
     """
     Class to identify the map.
     """
     def __init__(self):
         self.drawings = dict()
-        self.raw = dict()
         self.names = list()
 
     def load_map(self, path_to_maps):
@@ -19,22 +19,34 @@ class Maps:
 
         names_list = find_file_extension(path_to_maps, "txt")
         for name in names_list:
-            self.decode_map(path_to_maps, name)
-            self.names.append(remove_file_extension(name))
+            if not self.has_map_good_format(path_to_maps, name):
+                continue
 
-    def decode_map(self, path_to_maps, map_full_name):
+            self.names.append(remove_file_extension(name))
+            file = os.path.join(path_to_maps, name)
+            name_list = list()
+
+            with open(file) as f:
+                for line in f:
+                    line = line.rstrip()
+                    name_list.append(line)
+
+            self.drawings[remove_file_extension(name)] = name_list
+
+    @staticmethod
+    def has_map_good_format(path_to_maps, map__name):
         """
+        Check if the given text file has good format for the game
         :param map_full_name: name of the file containing the map
+        :param path_to_maps: path to find all maps
         :return: map is formed of a list of string
         """
 
         map_lines = list()
-        with open(os.path.join(path_to_maps, map_full_name)) as f:
-            for line in f:
-                line = line.rstrip()
-                map_lines.append(line)
+        file = os.path.join(path_to_maps, map__name)
 
-        map_name = remove_file_extension(map_full_name)
-        self.drawings[map_name] = map_lines
+        if not os.path.isfile(file) or os.path.getsize(file) == 0:
+            return False
 
+        return True
 

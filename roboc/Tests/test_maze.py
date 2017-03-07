@@ -12,3 +12,6 @@ class MazeTest(unittest.TestCase):
         """
         Test init function
         """
+
+if __name__ == "__main__":
+    unittest.main()
