@@ -1,3 +1,9 @@
 *.pyc
 *.sav
 *.map
+.idea/
+roboc/Tests/.cache/
+roboc/Tests/.coverage
+roboc/Tests/__pycache__/
+roboc/Tests/htmlcov/
+roboc/__pycache__/
