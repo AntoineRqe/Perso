@@ -133,11 +133,28 @@ def main():
     print(my_maze)
 
     while True:
-        (direction, step) = my_maze.parse_command()
-        while (direction, step) == (-1, -1):
-            (direction, step) = my_maze.parse_command()
+        print("------------------------------------------")
+        cmd = str(input("So, where does the robot go?\r\n")).upper()
 
-        my_maze.update_robot_position(direction, step)
+        try:
+            (direction, step) = my_maze.parse_command(cmd)
+        except EmptyOptions as e:
+            print(e)
+            print_cmd_usage()
+            (direction, step) = -1, -1
+        except InvalidCommands as e:
+            print(e)
+            print_cmd_usage()
+            (direction, step) = -1, -1
+        except TypeError:
+            (direction, step) = -1, -1
+
+        while (direction, step) == (-1, -1):
+            cmd = str(input("So, where does the robot go?\r\n")).upper()
+            (direction, step) = my_maze.parse_command(cmd)
+
+        (x, y) = my_maze.calculate_coordinate(direction, step)
+        my_maze.update_robot_position((x, y))
         print(my_maze)
         if my_maze.is_maze_resolved():
             print("Bravo, You exited the maze!")

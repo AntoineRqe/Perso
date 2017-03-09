@@ -92,33 +92,36 @@ class MazeTest(unittest.TestCase):
         test = Maze(test_maps)
 
         # Test North - South
-        test.update_robot_position("N",1)
+        test.update_robot_position((1, 1))
         self.assertEqual(test.map, test_maps_1N)
 
-        test.update_robot_position("S", 1)
+        test.update_robot_position((1, 2))
         self.assertEqual(test.map, test_maps)
 
-        test.update_robot_position("S", 1)
+        test.update_robot_position((1, 3))
         self.assertEqual(test.map, test_maps_1S)
 
-        test.update_robot_position("N", 1)
+        test.update_robot_position((1, 2))
         self.assertEqual(test.map, test_maps)
 
         # Test West - East
-        test.update_robot_position("E", 1)
+        test.update_robot_position((2, 2))
         self.assertEqual(test.map, test_maps_1E)
 
-        test.update_robot_position("W", 1)
+        test.update_robot_position((1, 2))
         self.assertEqual(test.map, test_maps)
 
-        test.update_robot_position("W", 1)
+        test.update_robot_position((0, 2))
         self.assertEqual(test.map, test_maps_1W)
 
-        test.update_robot_position("E", 1)
+        test.update_robot_position((1, 2))
         self.assertEqual(test.map, test_maps)
 
-        with self.assertRaises(CoordinateOutOfRange):
-            test.update_robot_position("N", 5)
+        with self.assertRaises(TypeError):
+            test.update_robot_position(("1", "2"))
+
+        with self.assertRaises(IndexError):
+            test.update_robot_position((10, 10))
 
     def test_is_maze_resolved(self):
         """
@@ -126,9 +129,9 @@ class MazeTest(unittest.TestCase):
         """
         test = Maze(test_maps)
         self.assertFalse(test.is_maze_resolved())
-        test.update_robot_position("N", 1)
+        test.update_robot_position((1, 1))
         self.assertFalse(test.is_maze_resolved())
-        test.update_robot_position("E", 2)
+        test.update_robot_position((3, 1))
         self.assertTrue(test.is_maze_resolved())
 
     def test_is_itinerary_clear(self):
@@ -146,6 +149,41 @@ class MazeTest(unittest.TestCase):
         self.assertFalse(test.is_itinerary_clear(10, "2"))
         self.assertFalse(test.is_itinerary_clear("EAS", "1"))
         self.assertFalse(test.is_itinerary_clear("NAZ", -1))
+        self.assertFalse(test.is_itinerary_clear("N", 2))
+        self.assertFalse(test.is_itinerary_clear("E", 3))
 
+    def test_parse_command(self):
+        """
+        Test parse command function
+        """
+        test = Maze(test_maps)
+        with self.assertRaises(InvalidCommands):
+            test.parse_command("abc")
+        with self.assertRaises(TypeError):
+            test.parse_command(133)
+        with self.assertRaises(EmptyOptions):
+            test.parse_command("")
+
+        (cmd, direction) = test.parse_command("N")
+        self.assertEqual((cmd, direction), ("N",1))
+
+        (cmd, direction) = test.parse_command("E2")
+        self.assertEqual((cmd, direction), ("E", 2))
+
+        (cmd, direction) = test.parse_command("S1")
+        self.assertEqual((cmd, direction), (-1, -1))
+
+        (cmd, direction) = test.parse_command("W10")
+        self.assertEqual((cmd, direction), (-1, -1))
+
+    def test_repr(self):
+        test = Maze(test_maps)
+        repr = test.__repr__().rsplit("\r\n")
+        self.assertEqual(repr[:-1], test_maps)
+
+    def test_save(self):
+        """
+        Test  save function
+        """
 if __name__ == "__main__":
     unittest.main()

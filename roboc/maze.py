@@ -59,14 +59,14 @@ class Maze:
         """
         return len(self.map[0]), len(self.map)
 
-    def update_robot_position(self, direction, step):
+    def update_robot_position(self, coordinate):
         """
         Update position of the robot into the maze
-        :param direction: direction for the robot to move
-        :param step: number of step to do
+        :param coordinate: couple of coordinates
         """
 
-        new_x, new_y = self.calculate_coordinate(direction, step)
+        new_x = coordinate[0]
+        new_y = coordinate[1]
 
         # -------------------------------
         # Delete previous robot position
@@ -82,31 +82,22 @@ class Maze:
 
         self.robot_position = (new_x, new_y)
 
-    def parse_command(self):
+    def parse_command(self, cmd):
         """
         Parse the command given to mode
-        :return: True if command valid, False otherwise
+        :param cmd : the given command to parse
+        :return: return a couple of direction and step, -1, -1 if invalid command.
         """
 
-        print("------------------------------------------")
-        cmd = str(input("So, where does the robot go?\r\n")).upper()
-        try:
-            if len(cmd) <= 0:
-                raise EmptyOptions(cmd)
-            elif cmd[0] not in command_arguments:
-                raise InvalidCommands(cmd)
-            elif len(cmd) == 1 and cmd == "Q":
-                    self.save()
-                    exit(0)
-
-        except EmptyOptions as e:
-            print(e)
-            print_cmd_usage()
-            return -1, -1
-        except InvalidCommands as e:
-            print(e)
-            print_cmd_usage()
-            return -1, -1
+        if type(cmd) != str:
+            raise TypeError
+        elif len(cmd) <= 0:
+            raise EmptyOptions(cmd)
+        elif cmd[0] not in command_arguments:
+            raise InvalidCommands(cmd)
+        elif len(cmd) == 1 and cmd == "Q":
+                self.save()
+                exit(0)
 
         cmd_direction = cmd[0]
         if len(cmd) > 1:
