@@ -13,6 +13,8 @@ def main():
     # Retrieve all Urls
     # -----------------
 
+    if not os.path.exists(os.path.join(os.getcwd(),"Datas")):
+        os.mkdir(os.path.join(os.getcwd(),"Datas"))
     if os.path.exists(database_relative_path):
         os.remove(database_relative_path)
 

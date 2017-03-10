@@ -13,6 +13,10 @@ database_entries = [(1, 1, 0, 'https://www.xmco.fr/'),
 
 class UnitTest(unittest.TestCase):
 
+    def setUp(self):
+        if not os.path.exists(os.path.join(os.getcwd(), "Datas")):
+            os.mkdir(os.path.join(os.getcwd(), "Datas"))
+
     def test_increment_key(self):
         """
         Test increment_key function
