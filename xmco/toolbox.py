@@ -24,7 +24,8 @@ def increment_key():
 
 def get_urls_from_page(parent_url):
     """
-    Retrieve all hyperlinks from given url (check for <a> element) and remove duplicates
+    Retrieve all hyperlinks from given url (check for <a> element)
+    and remove duplicates
     :param parent_url: url of the address to examine
     :return: a list of all url hyperlinks found
     """
@@ -52,10 +53,12 @@ def get_urls_from_page(parent_url):
                 link = parent_url + link[1:]
             hyperlink_list.append(link)
 
-    hyperlink_list = [url for url in hyperlink_list if is_absolute_link(url) and
+    hyperlink_list = [url for url in hyperlink_list if
+                      is_absolute_link(url) and
                       is_url_link_to_page(url) and
                       is_string_in_url("www.xmco.fr", url) and
-                      not is_string_in_url("ailto", url)]
+                      not is_string_in_url("ailto", url) and
+                      not is_string_in_url("images", url)]
 
     return list(set(hyperlink_list))
 
@@ -95,7 +98,8 @@ def is_absolute_link(link):
 
 def is_url_link_to_page(url):
     """
-    Check if the url links to an other HTLM page, not a media file (pdf, jpg, mov...)
+    Check if the url links to an other HTLM page,
+    not a media file (pdf, jpg, mov...)
     :param url: url to be checked
     :return: True if url is a real link, False if it is a media file
     """
@@ -145,9 +149,9 @@ def construct_database_entry(depth, url):
     elif len(url) <= 0 or depth < 0:
         raise ValueError
 
-    id = increment_key()
+    key = increment_key()
 
-    return id, is_url_secure(url), depth, url
+    return key, is_url_secure(url), depth, url
 
 
 def create_database(path_to_database):
@@ -189,8 +193,11 @@ def pretty_print_database(entries_list):
     pretty += "| --- |" + "-"*89 + "| ----- | ------ |\r\n"
 
     for entry in entries_list:
-        pretty += "| {}".format(entry[0]) + " " * (4-len(str(entry[0]))) + "| {}".format(entry[3]) + \
-                  " "*(88-len(entry[3])) + "| {}     | {}      |\r\n".format(entry[2], entry[1])
+        pretty += "| {}".format(entry[0]) + \
+                  " " * (4-len(str(entry[0]))) + \
+                  "| {}".format(entry[3]) + \
+                  " "*(88-len(entry[3])) + \
+                  "| {}     | {}      |\r\n".format(entry[2], entry[1])
     return pretty
 
 

@@ -1,0 +1,23 @@
+Package to install :
+
+lxml:
+    pip install lxml
+coverage:
+    pip install coverage
+urllib3:
+    pip install urllib3
+
+--------------------------------------------
+
+Run the program:
+
+python xmco_scraper.py
+
+Run the test:
+
+    cd Tests
+    python run_test.py
+
+Check the coverage:
+
+    Tests/htmlcov/index

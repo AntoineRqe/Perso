@@ -1,8 +1,10 @@
+# -*- coding: utf-8 -*-
+
 import os
 from toolbox import *
 
 xmco_url = "https://www.xmco.fr/"
-database_relative_path = os.path.join(os.getcwd(),"Datas","xmco_urls.db")
+database_relative_path = os.path.join(os.getcwd(), "Datas", "xmco_urls.db")
 
 max_depth_level = 3
 
@@ -13,8 +15,8 @@ def main():
     # Retrieve all Urls
     # -----------------
 
-    if not os.path.exists(os.path.join(os.getcwd(),"Datas")):
-        os.mkdir(os.path.join(os.getcwd(),"Datas"))
+    if not os.path.exists(os.path.join(os.getcwd(), "Datas")):
+        os.mkdir(os.path.join(os.getcwd(), "Datas"))
     if os.path.exists(database_relative_path):
         os.remove(database_relative_path)
 
@@ -32,8 +34,7 @@ def main():
 
         url_depth_dict[depth] = url_lists
 
-    # for i in range(len(url_depth_dict)):
-    #     print(url_depth_dict[i])
+    del url_depth_dict[0]
 
     # ------------------------------
     # Write the data in the database
@@ -44,7 +45,8 @@ def main():
     for depth, urls in url_depth_dict.items():
         for url in urls:
             entry = construct_database_entry(depth, url)
-            cur.execute("INSERT INTO page_url(id, secure, depth, url) VALUES(?,?,?,?)", entry)
+            cur.execute("INSERT INTO page_url(id, secure, depth, url)"
+                        " VALUES(?,?,?,?)", entry)
 
     conn.commit()
     cur.close()

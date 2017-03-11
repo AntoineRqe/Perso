@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
+
 import sys
 import subprocess
-import glob
 
 
 def print_and_call(cmd):
@@ -9,7 +10,7 @@ def print_and_call(cmd):
     subprocess.check_call(cmd)
 
 
-def run_utest():
+def run_test():
 
     cmd = ["coverage", "run", "-m", "unittest"]
     print_and_call(cmd)
@@ -19,4 +20,4 @@ def run_utest():
     print_and_call(cmd)
 
 if __name__ == '__main__':
-    run_utest()
+    run_test()

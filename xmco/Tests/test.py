@@ -1,11 +1,13 @@
+# -*- coding: utf-8 -*-
+
 import sys
 import os
 import unittest
-from toolbox import *
 sys.path.insert(0, os.path.join(os.getcwd(), ".."))
+from toolbox import *
 
 
-database_test = os.path.join(os.getcwd(),"Datas","test.db")
+database_test = os.path.join(os.getcwd(), "Datas", "test.db")
 database_entries = [(1, 1, 0, 'https://www.xmco.fr/'),
                     (2, 1, 1, 'https://www.xmco.fr/audits-de-securite/'),
                     (3, 1, 1, 'https://www.xmco.fr/societe/recrutement/')]
@@ -42,8 +44,11 @@ class UnitTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             test = get_urls_from_page("")
 
-        self.assertListEqual(get_urls_from_page("https://www.linkedin.com/feed/"), [])
-        self.assertListEqual(get_urls_from_page("/test"), [])
+        test = get_urls_from_page("https://www.linkedin.com/feed/")
+        self.assertListEqual(test, [])
+
+        test = get_urls_from_page("/test")
+        self.assertListEqual(test, [])
 
     def test_is_url_secure(self):
         """
@@ -53,7 +58,6 @@ class UnitTest(unittest.TestCase):
         self.assertEqual(is_url_secure("https://www.xmco.fr/"), 1)
         self.assertEqual(is_url_secure("http://www.xmco.fr/"), 0)
         self.assertEqual(is_url_secure("www.xmco.fr/"), 0)
-        self.assertEqual(is_url_secure("http://www.xmco.fr/test-intrusion.html"), 0)
 
         with self.assertRaises(TypeError):
             is_url_secure(102)
@@ -78,7 +82,6 @@ class UnitTest(unittest.TestCase):
         self.assertFalse(is_absolute_link("www.xmco.fr/"))
         self.assertFalse(is_absolute_link("ttps://www.xmco.fr/"))
         self.assertFalse(is_absolute_link("/asdfcsdfs"))
-        self.assertTrue(is_absolute_link("http://www.xmco.fr/test-intrusion.html"))
 
     def test_is_url_link_to_page(self):
         """
@@ -98,7 +101,6 @@ class UnitTest(unittest.TestCase):
         self.assertTrue(is_url_link_to_page(correct_link))
         self.assertFalse(is_url_link_to_page(pdf_link))
         self.assertFalse(is_url_link_to_page(mov_link))
-        self.assertTrue(is_url_link_to_page("http://www.xmco.fr/test-intrusion.html"))
 
     def test_is_string_in_url(self):
         """
@@ -110,9 +112,9 @@ class UnitTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             is_string_in_url("", "https://www.xmco.fr/")
 
-        self.assertTrue(is_string_in_url("www.xmco.fr", "https://www.xmco.fr/"))
-        self.assertTrue(is_string_in_url("www.xmco.fr", "http://www.xmco.fr/test-intrusion.html"))
-        self.assertFalse(is_string_in_url("www.xco.fr", "https://www.xmco.fr/"))
+        test = "www.xmco.fr"
+        self.assertTrue(is_string_in_url(test, "https://www.xmco.fr/"))
+        self.assertFalse(is_string_in_url(test, "https://www.xco.fr/"))
 
     def test_create_database(self):
         """
@@ -173,7 +175,6 @@ class UnitTest(unittest.TestCase):
             pretty_print_database("")
         with self.assertRaises(TypeError):
             pretty_print_database(list())
-
 
 
 if __name__ == "__main__":
