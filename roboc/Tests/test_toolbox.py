@@ -54,7 +54,7 @@ class ToolboxTest(unittest.TestCase):
         self.assertEqual(result, [])
 
         result = find_file_extension(".\\Saves_tests", "sav")
-        self.assertEqual(2, len(result))
+        self.assertEqual(1, len(result))
         self.assertIn("labybrain.sav", result)
 
     def test_add_file_extension(self):

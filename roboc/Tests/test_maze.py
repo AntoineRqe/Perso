@@ -217,17 +217,18 @@ class MazeTest(unittest.TestCase):
         test = Maze(test_maps)
 
         test.put_door("PW")
-        self.assertEqual(test.map,test_maps_door_W)
         self.assertEqual(test.clean_map, clean_test_maps_door_W)
 
         test.put_wall("MW")
-        self.assertEqual(test.map,test_maps)
         self.assertEqual(test.clean_map, clean_test_maps)
 
-    def test_repr(self):
+    def test_init_robot_position(self):
         test = Maze(test_maps)
-        repr = test.__repr__().rsplit("\r\n")
-        self.assertEqual(repr[:-1], test_maps)
+        for i in range(0, 100):
+            self.assertGreater(test.size[0], test.init_robot_position()[0])
+            self.assertLessEqual(0, test.init_robot_position()[0])
+            self.assertGreater(test.size[1], test.init_robot_position()[1])
+            self.assertLessEqual(0, test.init_robot_position()[1])
 
     @staticmethod
     def test_save():

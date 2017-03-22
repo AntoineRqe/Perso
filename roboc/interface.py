@@ -4,7 +4,7 @@ import operation as op
 
 game_options = {
     "S": {
-        "cmd" : op.start_game,
+        "cmd": op.start_game,
         "desc": "Start a new game"
     },
     "L": {

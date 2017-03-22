@@ -119,6 +119,3 @@ def load(full_path_save_file):
     print("{} has been loaded".format(full_path_save_file))
 
     return my_maze
-
-
-

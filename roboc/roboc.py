@@ -22,10 +22,7 @@ def init(tries=5):
     labyrinths = Maps()
     labyrinths.load_map(os.path.join(os.getcwd(), "Maps"))
 
-    print("Time to start the game")
-    print("You can : Start a predefined game(S)")
-    print("          Load a game previously saved(L)")
-    print("          Edit a new map(E)")
+    print_init_usage(game_options)
 
     try:
         options = str(input("So how do you want to start?\r\n")).upper()
@@ -43,11 +40,10 @@ def init(tries=5):
         print_init_usage(game_options)
         return init(tries=tries - 1)
 
+    if options == "S":
+        return Maze(game_options[options]["cmd"](labyrinths))
     else:
-        if options == "S":
-            return Maze(game_options[options]["cmd"](labyrinths))
-        else:
-            return game_options[options]["cmd"](labyrinths)
+        return game_options[options]["cmd"](labyrinths)
 
 
 def main():

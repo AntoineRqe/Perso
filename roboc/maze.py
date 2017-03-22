@@ -3,6 +3,7 @@
 from custom_errors import EmptyOptions, InvalidCommands, EncounterObstacle, CoordinateOutOfRange
 from pickle import Pickler
 from os import path as op
+from random import randrange
 
 
 def find_entrance(maze):
@@ -82,6 +83,9 @@ class Maze:
         robot_line[self.robot_position[0]] = " "
         self.clean_map[self.robot_position[1]] = "".join(robot_line)
 
+        # Random position for robot
+        self.update_robot_position(self.init_robot_position())
+
     def __repr__(self):
         map_str = str()
         for map_line in self.map:
@@ -94,6 +98,19 @@ class Maze:
         :return: the dimension of the maze
         """
         return len(self.map[0]), len(self.map)
+
+    def init_robot_position(self):
+        """
+        Get a random position for robot
+        :return: coordinate of initial position.
+        """
+        x, y = (-1, -1)
+        while (x, y) == (-1, -1):
+            x, y = randrange(0, self.size[0]), randrange(0, self.size[1])
+            if self.map[y][x] != " " and self.map[y][x] != ".":
+                x, y = (-1, -1)
+
+        return x, y
 
     def print_cmd_usage(self):
         """
