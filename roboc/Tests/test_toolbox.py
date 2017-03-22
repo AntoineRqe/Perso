@@ -16,14 +16,21 @@ class ToolboxTest(unittest.TestCase):
 
         empty_save = os.path.join("","")
         fake_sav = os.path.join(os.getcwd(),"Saves_tests\\fake.sav")
-        real_sav= os.path.join(os.getcwd(),"Saves_tests\\labybrain.sav")
+        real_sav = os.path.join(os.getcwd(),"Saves_tests\\labybrain.sav")
+        empty_sav = os.path.join(os.getcwd(), "Saves_tests\\empty.sav")
 
         result = ""
+
+        result = load(984)
+        self.assertEqual(result, None)
 
         result = load(empty_save)
         self.assertEqual(result,None)
 
         result = load(fake_sav)
+        self.assertEqual(result, None)
+
+        result = load(empty_sav)
         self.assertEqual(result, None)
 
         result = load(real_sav)
@@ -36,6 +43,9 @@ class ToolboxTest(unittest.TestCase):
 
         result = []
 
+        result = find_file_extension(123, "py")
+        self.assertEqual(result, None)
+
         result = find_file_extension(".", "py")
         self.assertNotEqual(0, len(result))
         self.assertIn(os.path.basename(__file__), result)
@@ -44,7 +54,7 @@ class ToolboxTest(unittest.TestCase):
         self.assertEqual(result, [])
 
         result = find_file_extension(".\\Saves_tests", "sav")
-        self.assertEqual(1, len(result))
+        self.assertEqual(2, len(result))
         self.assertIn("labybrain.sav", result)
 
     def test_add_file_extension(self):

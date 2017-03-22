@@ -1,9 +1,8 @@
 # encoding utf-8
 
-from custom_errors import *
-from toolbox import *
-from pickle import *
-import os
+from custom_errors import EmptyOptions, InvalidCommands, EncounterObstacle, CoordinateOutOfRange
+from pickle import Pickler
+from os import path as op
 
 
 def find_entrance(maze):
@@ -40,6 +39,43 @@ class Maze:
         self.size = self.len()
         self.exit_position = find_exit(self.map)
         self.robot_position = find_entrance(self.map)
+        self.robot_commands = {
+            "N": {
+                "type": "move",
+                "cmd": self.move,
+                "desc": "Go to north"
+            },
+            "E": {
+                "type": "move",
+                "cmd": self.move,
+                "desc": "Go to east"
+            },
+            "S": {
+                "type": "move",
+                "cmd": self.move,
+                "desc": "Go to south"
+            },
+            "W": {
+                "type": "move",
+                "cmd": self.move,
+                "desc": "Go to west"
+            },
+            "Q": {
+                "type": "option",
+                "cmd": self.save,
+                "desc": "Save and quit the game"
+            },
+            "M": {
+                "type": "transform",
+                "cmd": self.put_wall,
+                "desc": "Transform door into wall",
+            },
+            "P": {
+                "type": "transform",
+                "cmd": self.put_door,
+                "desc": "Transform wall into door"
+            }
+        }
 
         # Remove robot position from clean map
         robot_line = list(self.clean_map[self.robot_position[1]])
@@ -58,6 +94,14 @@ class Maze:
         :return: the dimension of the maze
         """
         return len(self.map[0]), len(self.map)
+
+    def print_cmd_usage(self):
+        """
+        Print all robot commands available
+        """
+        print("List of robot command : ")
+        for key, body in self.robot_commands.items():
+            print("%s : %s" % (key, body["desc"]))
 
     def update_robot_position(self, coordinate):
         """
@@ -82,34 +126,57 @@ class Maze:
 
         self.robot_position = (new_x, new_y)
 
-    def parse_command(self, cmd):
+    def is_command_valid(self, cmd):
         """
-        Parse the command given to mode
-        :param cmd : the given command to parse
-        :return: return a couple of direction and step, -1, -1 if invalid command.
+        Check if the command has a valid format
+        :param cmd : the given command to verify
+        :return: True if command available, False otherwise
         """
 
-        if type(cmd) != str:
-            raise TypeError
-        elif len(cmd) <= 0:
-            raise EmptyOptions(cmd)
-        elif cmd[0] not in command_arguments:
-            raise InvalidCommands(cmd)
-        elif len(cmd) == 1 and cmd == "Q":
-                self.save()
-                exit(0)
+        if type(cmd) != str or len(cmd) <= 0:
+            return False
+        elif cmd[0] not in self.robot_commands.keys():
+            return False
 
-        cmd_direction = cmd[0]
-        if len(cmd) > 1:
-            cmd_steps = int(cmd[1:])
-        else:
-            cmd_steps = 1
+        if self.robot_commands[cmd[0]]["type"] == "move":
+            if len(cmd) == 1:
+                return True
+            elif cmd[1:].isdigit():
+                return True
+            else:
+                return False
 
-        if self.is_itinerary_clear(cmd_direction, cmd_steps):
-            return cmd_direction, cmd_steps
+        elif self.robot_commands[cmd[0]]["type"] == "transform":
+            if len(cmd) != 2:
+                return False
+            elif cmd[1] in ("N", "E", "S", "W"):
+                return True
+            else:
+                return False
+
+        elif self.robot_commands[cmd[0]]["type"] == "option":
+            if len(cmd) == 1:
+                return True
+            else:
+                return False
+
+    def move(self, cmd):
+        if len(cmd) == 1:
+            step = 1
         else:
-            print_cmd_usage()
-            return -1, -1
+            step = int(cmd[1:])
+
+        if not self.is_itinerary_clear(cmd[0], step):
+            return
+
+        x, y = self.calculate_coordinate(cmd[0], step)
+        self.update_robot_position((x, y))
+
+    def put_wall(self, cmd):
+        pass
+
+    def put_door(self, cmd):
+        pass
 
     def calculate_coordinate(self, direction, step):
         """
@@ -198,27 +265,26 @@ class Maze:
         else:
             return False
 
-    def save(self, save_name):
+    def save(self, *args):
         """
         Save the game in binary file name.sav and quit the game
-        :param save_name : name of the game to save
         """
         confirm = True
-        file_name = "{}.sav".format(self.name)
-        print("File to save {}".format(file_name))
+        save_name = str(input("Name of the save?\n\r"))
+        print("File to save {}".format(save_name))
 
-        if os.path.isfile(file_name):
-            ret = str(input("Are you sure you want to erase save {}? (Y/N)\r\n".format(file_name)))
+        if op.isfile(save_name):
+            ret = str(input("Are you sure you want to erase save {}? (Y/N)\r\n".format(save_name)))
             while ret.upper() not in ("Y", "N"):
-                ret = str(input("Are you sure you want to erase save {}? (Y/N)\r\n".format(file_name)))
+                ret = str(input("Are you sure you want to erase save {}? (Y/N)\r\n".format(save_name)))
             if ret.upper() == "N":
                 confirm = False
             else:
                 confirm = True
 
         if confirm:
-            with open(file_name, 'wb') as save:
+            with open(save_name, 'wb') as save:
                 my_pickler = Pickler(save)
                 my_pickler.dump(self)
-            print("File {} saved".format(file_name))
+            print("File {} saved".format(save_name))
         exit()

@@ -1,9 +1,9 @@
 import sys
 import os
-import unittest
-
 sys.path.insert(0, os.path.join(os.getcwd(), ".."))
-from maps import *
+import unittest
+from maps import Maps
+
 
 path_to_map = os.path.join(os.getcwd(),"Maps_tests")
 

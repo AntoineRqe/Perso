@@ -2,9 +2,8 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.getcwd(), ".."))
 import unittest
-from maze import *
-
-
+from maze import Maze
+from custom_errors import CoordinateOutOfRange
 
 test_maps = ["OOOOO",
              "O  UO",
@@ -152,29 +151,57 @@ class MazeTest(unittest.TestCase):
         self.assertFalse(test.is_itinerary_clear("N", 2))
         self.assertFalse(test.is_itinerary_clear("E", 3))
 
-    def test_parse_command(self):
-        """
-        Test parse command function
-        """
+    def test_is_command_valid(self):
         test = Maze(test_maps)
-        with self.assertRaises(InvalidCommands):
-            test.parse_command("abc")
-        with self.assertRaises(TypeError):
-            test.parse_command(133)
-        with self.assertRaises(EmptyOptions):
-            test.parse_command("")
 
-        (cmd, direction) = test.parse_command("N")
-        self.assertEqual((cmd, direction), ("N",1))
+        self.assertFalse(test.is_command_valid(""))
+        self.assertFalse(test.is_command_valid("A"))
+        self.assertFalse(test.is_command_valid("9"))
 
-        (cmd, direction) = test.parse_command("E2")
-        self.assertEqual((cmd, direction), ("E", 2))
+        self.assertTrue(test.is_command_valid("N"))
+        self.assertFalse(test.is_command_valid("NN"))
+        self.assertFalse(test.is_command_valid("N/"))
+        self.assertFalse(test.is_command_valid("N-10"))
+        self.assertTrue(test.is_command_valid("N8"))
+        self.assertTrue(test.is_command_valid("S1"))
+        self.assertTrue(test.is_command_valid("W2"))
+        self.assertTrue(test.is_command_valid("E8"))
 
-        (cmd, direction) = test.parse_command("S1")
-        self.assertEqual((cmd, direction), (-1, -1))
+        self.assertTrue(test.is_command_valid("Q"))
+        self.assertFalse(test.is_command_valid("Q1"))
 
-        (cmd, direction) = test.parse_command("W10")
-        self.assertEqual((cmd, direction), (-1, -1))
+        self.assertFalse(test.is_command_valid("M"))
+        self.assertFalse(test.is_command_valid("MM"))
+        self.assertFalse(test.is_command_valid("M9"))
+        self.assertFalse(test.is_command_valid("M."))
+        self.assertTrue(test.is_command_valid("MN"))
+
+    def test_move(self):
+        test = Maze(test_maps)
+
+        test.move("N1")
+        self.assertEqual(test.map, test_maps_1N)
+        test.move("S1")
+        self.assertEqual(test.map, test_maps)
+
+        test.move("S1")
+        self.assertEqual(test.map, test_maps)
+        test.move("N")
+        self.assertEqual(test.map, test_maps_1N)
+        test.move("S1")
+        self.assertEqual(test.map, test_maps)
+
+        test.move("E1")
+        self.assertEqual(test.map, test_maps_1E)
+        test.move("W1")
+        self.assertEqual(test.map, test_maps)
+
+        test.move("W")
+        self.assertEqual(test.map, test_maps)
+        test.move("E1")
+        self.assertEqual(test.map, test_maps_1E)
+        test.move("W1")
+        self.assertEqual(test.map, test_maps)
 
     def test_repr(self):
         test = Maze(test_maps)

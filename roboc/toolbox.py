@@ -1,11 +1,8 @@
 # encoding utf-8
 
-from custom_errors import *
-from pickle import *
+from pickle import Unpickler
 import os
 
-init_arguments = ("L", "S", "E")
-command_arguments = ("N", "E", "S", "W", "Q")
 save_path = os.path.join(os.getcwd(), "Saves")
 
 
@@ -28,26 +25,14 @@ def print_usage():
     print("---------------------------------------------------------------------")
 
 
-def print_init_usage():
+def print_init_usage(game_options):
     """
     Print all init option available
+    :param : game_options : dictionary of game option
     """
-    print("List of available init option")
-    print("     {} : load a save game".format(init_arguments[0]))
-    print("     {} : Start a new game".format(init_arguments[1]))
-    print("     {} : Edit a new maze".format(init_arguments[2]))
-
-
-def print_cmd_usage():
-    """
-    Print all robot commands available
-    """
-    print("List of robot command")
-    print("     {} : Go north".format(command_arguments[0]))
-    print("     {} : Go east".format(command_arguments[1]))
-    print("     {} : Go south".format(command_arguments[2]))
-    print("     {} : Go west".format(command_arguments[3]))
-    print("     {} : Save and quit".format(command_arguments[4]))
+    print("List of available init option: ")
+    for name, interface in game_options.items():
+        print("    {} : {}".format(name, interface["desc"]))
 
 
 def find_file_extension(file_path, file_extension):
@@ -134,3 +119,6 @@ def load(full_path_save_file):
     print("{} has been loaded".format(full_path_save_file))
 
     return my_maze
+
+
+

@@ -1,6 +1,5 @@
 import sys
 import subprocess
-import glob
 
 
 def print_and_call(cmd):

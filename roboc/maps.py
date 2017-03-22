@@ -1,7 +1,7 @@
 # encoding utf-8
 
-from toolbox import *
-import os
+from toolbox import find_file_extension, remove_file_extension
+from os import path as op
 
 
 class Maps:
@@ -23,7 +23,7 @@ class Maps:
                 continue
 
             self.names.append(remove_file_extension(name))
-            file = os.path.join(path_to_maps, name)
+            file = op.join(path_to_maps, name)
             name_list = list()
 
             with open(file) as f:
@@ -37,15 +37,15 @@ class Maps:
     def has_map_good_format(path_to_maps, map__name):
         """
         Check if the given text file has good format for the game
-        :param map_full_name: name of the file containing the map
+        :param map__name: name of the file containing the map
         :param path_to_maps: path to find all maps
         :return: map is formed of a list of string
         """
 
         map_lines = list()
-        file = os.path.join(path_to_maps, map__name)
+        file = op.join(path_to_maps, map__name)
 
-        if not os.path.isfile(file) or os.path.getsize(file) == 0:
+        if not op.isfile(file) or op.getsize(file) == 0:
             return False
 
         return True
