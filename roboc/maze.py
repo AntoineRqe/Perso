@@ -173,10 +173,42 @@ class Maze:
         self.update_robot_position((x, y))
 
     def put_wall(self, cmd):
-        pass
+        """
+        Function to transform a door into a wall
+        :param cmd: cmd given
+        """
+
+        x, y = self.calculate_coordinate(cmd[1], 1)
+
+        if self.map[y][x] == ".":
+            # update clean map
+            map_list = list(self.clean_map[y])
+            map_list[x] = 'O'
+            self.clean_map[y] = "".join(map_list)
+
+            # update current map
+            map_list = list(self.map[y])
+            map_list[x] = 'O'
+            self.map[y] = "".join(map_list)
 
     def put_door(self, cmd):
-        pass
+        """
+        Function to transform a wall into a door
+        :param cmd: cmd given
+        """
+
+        x, y = self.calculate_coordinate(cmd[1], 1)
+
+        if self.map[y][x] == "O":
+            # update clean map
+            map_list = list(self.clean_map[y])
+            map_list[x] = '.'
+            self.clean_map[y] = "".join(map_list)
+
+            # update current map
+            map_list = list(self.map[y])
+            map_list[x] = '.'
+            self.map[y] = "".join(map_list)
 
     def calculate_coordinate(self, direction, step):
         """

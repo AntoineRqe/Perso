@@ -10,10 +10,20 @@ test_maps = ["OOOOO",
              "OX  O",
              "OOOOO"]
 
+test_maps_door_W = ["OOOOO",
+                    "O  UO",
+                    ".X  O",
+                    "OOOOO"]
+
 clean_test_maps = ["OOOOO",
                    "O  UO",
                    "O   O",
                    "OOOOO"]
+
+clean_test_maps_door_W = ["OOOOO",
+                          "O  UO",
+                          ".   O",
+                          "OOOOO"]
 
 test_maps_1N = ["OOOOO",
                 "OX UO",
@@ -203,14 +213,28 @@ class MazeTest(unittest.TestCase):
         test.move("W1")
         self.assertEqual(test.map, test_maps)
 
+    def test_put_wall(self):
+        test = Maze(test_maps)
+
+        test.put_door("PW")
+        self.assertEqual(test.map,test_maps_door_W)
+        self.assertEqual(test.clean_map, clean_test_maps_door_W)
+
+        test.put_wall("MW")
+        self.assertEqual(test.map,test_maps)
+        self.assertEqual(test.clean_map, clean_test_maps)
+
     def test_repr(self):
         test = Maze(test_maps)
         repr = test.__repr__().rsplit("\r\n")
         self.assertEqual(repr[:-1], test_maps)
 
-    def test_save(self):
+    @staticmethod
+    def test_save():
         """
         Test  save function
         """
+        pass
+
 if __name__ == "__main__":
     unittest.main()
