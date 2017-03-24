@@ -14,6 +14,10 @@ def init(tries=5):
     :return: return a maze
     """
 
+    players = list()
+    players.append("Antoine")
+    print(players)
+
     if tries == 0:
         print("No more tries, exit the program!")
         exit(0)
@@ -41,7 +45,7 @@ def init(tries=5):
         return init(tries=tries - 1)
 
     if options == "S":
-        return Maze(game_options[options]["cmd"](labyrinths))
+        return Maze(game_options[options]["cmd"](labyrinths, players))
     else:
         return game_options[options]["cmd"](labyrinths)
 

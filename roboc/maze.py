@@ -6,17 +6,6 @@ from os import path as op
 from random import randrange
 
 
-def find_entrance(maze):
-    """
-    Find 'E' in a list of string
-    :param maze: the list of string to parse
-    :return: a tuple with the coordinate of the entrance
-    """
-    for y, map_line in enumerate(maze):
-        if 'X' in map_line:
-            return str(map_line).index('X'), y
-
-
 def find_exit(maze):
     """
     Find 'U' in a list of string
@@ -28,18 +17,31 @@ def find_exit(maze):
             return str(map_line).index('U'), y
 
 
+def find_entrance(maze):
+    """
+    Find 'X' in a list of string
+    :param maze: the list of string to parse
+    :return: a tuple with the coordinate of the entrance
+    """
+    for y, map_line in enumerate(maze):
+        if 'X' in map_line:
+            return str(map_line).index('X'), y
+
+
 class Maze:
 
-    def __init__(self, map_drawing):
+    def __init__(self, map_drawing, *players):
 
         if type(map_drawing) != list or len(map_drawing) <= 0:
             raise TypeError("Wrong type give")
 
+        print("Test {}".format(players))
+        self.players = players
         self.map = list(map_drawing)
         self.clean_map = list(map_drawing)
         self.size = self.len()
-        self.exit_position = find_exit(self.map)
-        self.robot_position = find_entrance(self.map)
+        self.exit_position = find_exit(self.clean_map)
+        self.robot_position = {}
         self.robot_commands = {
             "N": {
                 "type": "move",
@@ -78,13 +80,10 @@ class Maze:
             }
         }
 
-        # Remove robot position from clean map
-        robot_line = list(self.clean_map[self.robot_position[1]])
-        robot_line[self.robot_position[0]] = " "
-        self.clean_map[self.robot_position[1]] = "".join(robot_line)
-
         # Random position for robot
-        self.update_robot_position(self.init_robot_position())
+        for player in players:
+            self.update_robot_position(player, self.init_robot_position())
+            print(" Test {} : [}".format(player, self.robot_position[player]))
 
     def __repr__(self):
         map_str = str()
@@ -97,7 +96,7 @@ class Maze:
         Function to get the dimension of the maze
         :return: the dimension of the maze
         """
-        return len(self.map[0]), len(self.map)
+        return len(self.clean_map[0]), len(self.clean_map)
 
     def init_robot_position(self):
         """
@@ -120,9 +119,10 @@ class Maze:
         for key, body in self.robot_commands.items():
             print("%s : %s" % (key, body["desc"]))
 
-    def update_robot_position(self, coordinate):
+    def update_robot_position(self, player, coordinate):
         """
         Update position of the robot into the maze
+        :param player: name of the robot player
         :param coordinate: couple of coordinates
         """
 
@@ -132,7 +132,9 @@ class Maze:
         # -------------------------------
         # Delete previous robot position
         # -------------------------------
-        self.map[self.robot_position[1]] = self.clean_map[self.robot_position[1]]
+        map_list = list(self.map[self.robot_position[player][1]])
+        map_list[self.robot_position[player][0]] = self.clean_map[self.robot_position[player][0]]
+        self.map[self.robot_position[player][1]] = "".join(map_list)
 
         # -------------------------------
         # Update robot position
@@ -141,7 +143,7 @@ class Maze:
         map_list[new_x] = 'X'
         self.map[new_y] = "".join(map_list)
 
-        self.robot_position = (new_x, new_y)
+        self.robot_position[player] = (new_x, new_y)
 
     def is_command_valid(self, cmd):
         """

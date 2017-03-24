@@ -5,7 +5,7 @@ O OO   OO O       O     O .     O O
 O OOO OOO O       O       O     O O
 O OOOOOOO O       O       O     0 O
 OOO OOO . OOOO    O  OOOO.OOO.OOOOO
-OXO  O  O O       O     O O     O O
+O O  O  O O       O     O O     O O
 O O     O O       O     O O     O O
 O O     O O       O     O O     O O
 O O     O OOOOOOOOOOOOOOO O     O O
