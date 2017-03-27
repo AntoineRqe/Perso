@@ -58,7 +58,6 @@ class Maze:
             raise TypeError("Wrong type give")
 
         self.players = OrderedDict()
-        self.players_list = players
         self.current_player = ""
         self.map = list(map_drawing)
         self.clean_map = list(map_drawing)
@@ -107,7 +106,7 @@ class Maze:
         for player in players:
             self.players[player] = increment_number()
 
-        self.current_player = self.players_list[0]
+        self.current_player = list(self.players.keys())[0]
 
         # Random position for robot
         for player in self.players.keys():
@@ -379,8 +378,9 @@ class Maze:
         Iterative loop the the player
         :return: index to next player
         """
-        current_index = self.players_list.index(self.current_player)
-        if current_index < len(self.players_list)-1:
-            self.current_player = self.players_list[current_index+1]
+        player_list = list(self.players.keys())
+        current_index = player_list.index(self.current_player)
+        if current_index < len(player_list)-1:
+            self.current_player = player_list[current_index+1]
         else:
-            self.current_player = self.players_list[0]
+            self.current_player = player_list[0]
