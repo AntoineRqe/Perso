@@ -4,6 +4,28 @@ from custom_errors import EmptyOptions, InvalidCommands, EncounterObstacle, Coor
 from pickle import Pickler
 from os import path as op
 from random import randrange
+from collections import OrderedDict
+
+
+def static_vars(**kwargs):
+    """
+    Decoration to implement static variable to a fu
+    """
+    def decorate(func):
+        for k in kwargs:
+            setattr(func, k, kwargs[k])
+        return func
+    return decorate
+
+
+@static_vars(count=0)
+def increment_number():
+    """
+    Define a increment number
+    :return incremental number
+    """
+    increment_number.count += 1
+    return str(increment_number.count)
 
 
 def find_exit(maze):
@@ -30,13 +52,14 @@ def find_entrance(maze):
 
 class Maze:
 
-    def __init__(self, map_drawing, *players):
+    def __init__(self, map_drawing=[], players=[]):
 
         if type(map_drawing) != list or len(map_drawing) <= 0:
             raise TypeError("Wrong type give")
 
-        print("Test {}".format(players))
-        self.players = players
+        self.players = OrderedDict()
+        self.players_list = players
+        self.current_player = ""
         self.map = list(map_drawing)
         self.clean_map = list(map_drawing)
         self.size = self.len()
@@ -80,10 +103,16 @@ class Maze:
             }
         }
 
-        # Random position for robot
+        # update player list with robot symbol
         for player in players:
+            self.players[player] = increment_number()
+
+        self.current_player = self.players_list[0]
+
+        # Random position for robot
+        for player in self.players.keys():
             self.update_robot_position(player, self.init_robot_position())
-            print(" Test {} : [}".format(player, self.robot_position[player]))
+            print(" Test {} : {}".format(player, self.robot_position[player]))
 
     def __repr__(self):
         map_str = str()
@@ -129,21 +158,26 @@ class Maze:
         new_x = coordinate[0]
         new_y = coordinate[1]
 
-        # -------------------------------
-        # Delete previous robot position
-        # -------------------------------
-        map_list = list(self.map[self.robot_position[player][1]])
-        map_list[self.robot_position[player][0]] = self.clean_map[self.robot_position[player][0]]
-        self.map[self.robot_position[player][1]] = "".join(map_list)
+        print("update_robot_position : {}".format(player))
+        if player not in self.robot_position or self.robot_position[player] == ():
+            self.robot_position[player] = (new_x, new_y)
+        else:
+            # -------------------------------
+            # Delete previous robot position
+            # -------------------------------
+            map_list = list(self.map[self.robot_position[player][1]])
+            map_list[self.robot_position[player][0]] = self.clean_map[self.robot_position[player][0]][1]
+            self.map[self.robot_position[player][1]] = "".join(map_list)
 
         # -------------------------------
         # Update robot position
         # -------------------------------
         map_list = list(self.map[new_y])
-        map_list[new_x] = 'X'
+        map_list[new_x] = self.players[player]
         self.map[new_y] = "".join(map_list)
 
         self.robot_position[player] = (new_x, new_y)
+        self.get_next_player()
 
     def is_command_valid(self, cmd):
         """
@@ -189,7 +223,7 @@ class Maze:
             return
 
         x, y = self.calculate_coordinate(cmd[0], step)
-        self.update_robot_position((x, y))
+        self.update_robot_position(self.current_player, (x, y))
 
     def put_wall(self, cmd):
         """
@@ -239,13 +273,13 @@ class Maze:
 
         (x, y) = (-1, -1)
         if direction == "N":
-            x, y = self.robot_position[0], self.robot_position[1] - step
+            x, y = self.robot_position[self.current_player][0], self.robot_position[self.current_player][1] - step
         elif direction == "E":
-            x, y = self.robot_position[0] + step, self.robot_position[1]
+            x, y = self.robot_position[self.current_player][0] + step, self.robot_position[self.current_player][1]
         elif direction == "S":
-            x, y = self.robot_position[0], self.robot_position[1] + step
+            x, y = self.robot_position[self.current_player][0], self.robot_position[self.current_player][1] + step
         elif direction == "W":
-            x, y = self.robot_position[0] - step, self.robot_position[1]
+            x, y = self.robot_position[self.current_player][0] - step, self.robot_position[self.current_player][1]
 
         if x < 0 or y < 0 or x > self.len()[0] or y > self.len()[1]:
             raise CoordinateOutOfRange((x,y))
@@ -274,25 +308,25 @@ class Maze:
         try:
             if cmd_direction == 'N':
                 for i in range(0, cmd_steps + 1):
-                    itinerary.append(self.map[(self.robot_position[1]) - i][self.robot_position[0]])
+                    itinerary.append(self.map[(self.robot_position[self.current_player][1]) - i][self.robot_position[self.current_player][0]])
                 if 'O' in itinerary:
                     raise EncounterObstacle(itinerary)
 
             elif cmd_direction == 'S':
                 for i in range(0, cmd_steps + 1):
-                    itinerary.append(self.map[(self.robot_position[1]) + i][self.robot_position[0]])
+                    itinerary.append(self.map[(self.robot_position[self.current_player][1]) + i][self.robot_position[self.current_player][0]])
                 if 'O' in itinerary:
                     raise EncounterObstacle(itinerary)
 
             elif cmd_direction == 'E':
                 for i in range(0, cmd_steps + 1):
-                    itinerary.append(self.map[self.robot_position[1]][self.robot_position[0] + i])
+                    itinerary.append(self.map[self.robot_position[self.current_player][1]][self.robot_position[self.current_player][0] + i])
                 if 'O' in itinerary:
                     raise EncounterObstacle(itinerary)
 
             elif cmd_direction == 'W':
                 for i in range(0, cmd_steps + 1):
-                    itinerary.append(self.map[self.robot_position[1]][self.robot_position[0] - i])
+                    itinerary.append(self.map[self.robot_position[self.current_player][1]][self.robot_position[self.current_player][0] - i])
                 if 'O' in itinerary:
                     raise EncounterObstacle(itinerary)
 
@@ -339,3 +373,14 @@ class Maze:
                 my_pickler.dump(self)
             print("File {} saved".format(save_name))
         exit()
+
+    def get_next_player(self):
+        """
+        Iterative loop the the player
+        :return: index to next player
+        """
+        current_index = self.players_list.index(self.current_player)
+        if current_index < len(self.players_list)-1:
+            self.current_player = self.players_list[current_index+1]
+        else:
+            self.current_player = self.players_list[0]

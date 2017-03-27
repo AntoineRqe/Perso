@@ -15,22 +15,22 @@ def load_game(*args, **kwargs):
     return my_maze
 
 
-def start_game(labyrinths, *args, **kwargs):
+def start_game(labyrinths, players=[],  *args, **kwargs):
     print("I want to start a game")
     print("Maps available are :".format(labyrinths.names))
 
     for index, name in enumerate(labyrinths.names):
         print("\t {} - {}".format(index, name))
 
-    try:
-        your_choice = int(input("What map do you want?\r\n"))
-    except ValueError:
-        your_choice = ""
-        pass
-
-    while type(your_choice) != int or your_choice < 0 or your_choice >= len(labyrinths.names):
-        your_choice = int(input("What map do you want?\r\n"))
-
+    # try:
+    #     your_choice = int(input("What map do you want?\r\n"))
+    # except ValueError:
+    #     your_choice = ""
+    #     pass
+    #
+    # while type(your_choice) != int or your_choice < 0 or your_choice >= len(labyrinths.names):
+    #     your_choice = int(input("What map do you want?\r\n"))
+    your_choice = 0
     return labyrinths.drawings[labyrinths.names[your_choice]]
 
 
