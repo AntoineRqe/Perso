@@ -1,6 +1,6 @@
 # encoding utf-8
 
-from custom_errors import EmptyOptions, InvalidCommands, EncounterObstacle, CoordinateOutOfRange
+from custom_errors import EmptyOptions, InvalidCommands, EncounterObstacle, CoordinateOutOfRange, OverrideRobot
 from pickle import Pickler
 from os import path as op
 from random import randrange
@@ -111,7 +111,7 @@ class Maze:
         # Random position for robot
         for player in self.players.keys():
             self.update_robot_position(player, self.init_robot_position())
-            print(" Test {} : {}".format(player, self.robot_position[player]))
+            self.get_next_player()
 
     def __repr__(self):
         map_str = str()
@@ -157,7 +157,6 @@ class Maze:
         new_x = coordinate[0]
         new_y = coordinate[1]
 
-        print("update_robot_position : {}".format(player))
         if player not in self.robot_position or self.robot_position[player] == ():
             self.robot_position[player] = (new_x, new_y)
         else:
@@ -176,7 +175,6 @@ class Maze:
         self.map[new_y] = "".join(map_list)
 
         self.robot_position[player] = (new_x, new_y)
-        self.get_next_player()
 
     def is_command_valid(self, cmd):
         """
@@ -223,6 +221,7 @@ class Maze:
 
         x, y = self.calculate_coordinate(cmd[0], step)
         self.update_robot_position(self.current_player, (x, y))
+        self.get_next_player()
 
     def put_wall(self, cmd):
         """
@@ -242,6 +241,7 @@ class Maze:
             map_list = list(self.map[y])
             map_list[x] = 'O'
             self.map[y] = "".join(map_list)
+            self.get_next_player()
 
     def put_door(self, cmd):
         """
@@ -261,6 +261,7 @@ class Maze:
             map_list = list(self.map[y])
             map_list[x] = '.'
             self.map[y] = "".join(map_list)
+            self.get_next_player()
 
     def calculate_coordinate(self, direction, step):
         """
@@ -297,37 +298,37 @@ class Maze:
             return False
 
         try:
-            self.calculate_coordinate(cmd_direction, cmd_steps)
+            future_coordinate = self.calculate_coordinate(cmd_direction, cmd_steps)
         except CoordinateOutOfRange as e:
+            print(e)
+            return False
+
+        try:
+            for robot, position in self.robot_position.items():
+                if future_coordinate == position:
+                    raise OverrideRobot(future_coordinate, robot)
+        except OverrideRobot as e:
             print(e)
             return False
 
         itinerary = list()
 
         try:
-            if cmd_direction == 'N':
-                for i in range(0, cmd_steps + 1):
+            for i in range(1, cmd_steps + 1):
+                if cmd_direction == 'N':
                     itinerary.append(self.map[(self.robot_position[self.current_player][1]) - i][self.robot_position[self.current_player][0]])
-                if 'O' in itinerary:
-                    raise EncounterObstacle(itinerary)
 
-            elif cmd_direction == 'S':
-                for i in range(0, cmd_steps + 1):
+                elif cmd_direction == 'S':
                     itinerary.append(self.map[(self.robot_position[self.current_player][1]) + i][self.robot_position[self.current_player][0]])
-                if 'O' in itinerary:
-                    raise EncounterObstacle(itinerary)
 
-            elif cmd_direction == 'E':
-                for i in range(0, cmd_steps + 1):
+                elif cmd_direction == 'E':
                     itinerary.append(self.map[self.robot_position[self.current_player][1]][self.robot_position[self.current_player][0] + i])
-                if 'O' in itinerary:
-                    raise EncounterObstacle(itinerary)
 
-            elif cmd_direction == 'W':
-                for i in range(0, cmd_steps + 1):
+                elif cmd_direction == 'W':
                     itinerary.append(self.map[self.robot_position[self.current_player][1]][self.robot_position[self.current_player][0] - i])
-                if 'O' in itinerary:
-                    raise EncounterObstacle(itinerary)
+
+            if 'O' in itinerary:
+                raise EncounterObstacle(itinerary)
 
         except EncounterObstacle as e:
             print(e)

@@ -82,7 +82,20 @@ class CoordinateOutOfRange(Exception):
         self.coordinate = coordinate
 
     def __str__(self):
-            return "coordinates {} are out of maze range".format(self.coordinate)
+        return "coordinates {} are out of maze range".format(self.coordinate)
+
+
+class OverrideRobot(Exception):
+    """
+    Exception raised when an other robot is already on the spot
+    """
+
+    def __init__(self, coordinate, robot_name):
+        self.coordinate = coordinate
+        self.robot_name = robot_name
+
+    def __str__(self):
+        return "coordinates {} are already occupied by {}".format(self.coordinate, self.robot_name)
 
 
 class EncounterObstacle(Exception):
@@ -94,4 +107,4 @@ class EncounterObstacle(Exception):
         self.itinerary = itinerary
 
     def __str__(self):
-            return "Itinerary {} encounters an obstacle".format(self.itinerary)
+        return "Itinerary {} encounters an obstacle".format(self.itinerary)
