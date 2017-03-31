@@ -1,6 +1,5 @@
-# encoding utf-8
+# -*- coding: utf-8 -*-
 
-from custom_errors import NumericalOptions, EmptyOptions, OverSizedOptions, WrongOptions, InvalidCommands
 from toolbox import print_init_usage, print_usage
 from maps import Maps
 from maze import Maze
@@ -73,7 +72,6 @@ def main():
         my_maze.robot_commands[cmd[0]]["cmd"](cmd)
         print(my_maze)
         if my_maze.is_maze_resolved():
-            print("Bravo, You exited the maze!")
             break
 
 if __name__ == "__main__":

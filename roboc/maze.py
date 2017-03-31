@@ -1,4 +1,4 @@
-# encoding utf-8
+# -*- coding: utf-8 -*-
 
 from custom_errors import EmptyOptions, InvalidCommands, EncounterObstacle, CoordinateOutOfRange, OverrideRobot
 from pickle import Pickler
@@ -345,10 +345,12 @@ class Maze:
         Check if Robot found the exit
         :return: True if exit found, False otherwise
         """
-        if self.robot_position == self.exit_position:
-            return True
-        else:
-            return False
+        for player, position in self.robot_position.items():
+            if position == self.exit_position:
+                print("{} has exited the maze!".format(player))
+                return True
+
+        return False
 
     def save(self, *args):
         """

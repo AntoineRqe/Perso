@@ -1,4 +1,4 @@
-# encoding utf-8
+# -*- coding: utf-8 -*-
 
 from toolbox import find_file_extension
 from pickle import Pickler
