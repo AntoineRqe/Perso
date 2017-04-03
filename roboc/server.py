@@ -5,7 +5,8 @@ from maze import Maze
 import os
 from os.path import join as opj
 import socket
-from select import select
+import select
+import json
 from interface import game_options
 
 
@@ -23,9 +24,16 @@ class RobocServer:
         """
 
         self.players = {}
+
         self.maze = None
         self.max_players = 2
         self.active = False
+        self.cmd_list = {"Bind": {
+            "id": 1
+        }}
+        self.reply_list = {"Bind": {
+            "id": 1,
+        }}
 
         if kwargs.get("host") is not None:
             self.host = kwargs["host"]
@@ -48,16 +56,58 @@ class RobocServer:
         :param timeout time to wait for client in second 
         """
 
-        while len(self.players) < self.max_players:
-            client_requests, wlist, xlist = select([self.server], [], [])
-            print("Clients wait for connection {}".format(client_requests))
+        client_connected = []
 
-            for request in client_requests:
-                print("1 {}".format(request))
+        while len(client_connected) < self.max_players:
+            # Monitor server side for incoming connections
+            client_requests, wlist, xlist = select.select([self.server], [], [])
+
+            for client_request in client_requests:
+                # Accept connection to server if limit is not reached
+                if len(client_connected) < self.max_players:
+                    open_sockets, infos_connections = client_request.accept()
+                    client_connected.append(open_sockets)
+
+        self.bind_clients(client_connected)
+
+    def bind_clients(self, client_connected):
+        """
+        Bind client to server providing extras information
+        :return: 
+        """
+
+        for client in client_connected:
+            msg = self.make("Bind")
+            client.send(msg.encode())
+
+        while len(self.players) < self.max_players:
+            rlist, wlist, xlist = select.select(client_connected, [], [])
+            for read in rlist:
                 if len(self.players) < self.max_players:
-                    clients_connection, infos_connections = request.accept()
-                    print("2 {}".format(clients_connection))
-                    self.players[infos_connections] = clients_connection
+                    msg = json.loads(read.recv(1024))
+                    self.players[msg["content"]] = read
+
+        print("All players are here : {}".format(self.players))
+
+    def make(self, cmd_str):
+        """
+        Function to build JSON to be send
+        :param cmd_str: name of the command to send
+        :return: a JSON object ready to be sent
+        """
+
+        msg = self.cmd_list.get(cmd_str)
+        if msg is None:
+            print("{} doesn't exist, no message built")
+            return msg
+
+        return json.dumps({cmd_str: msg})
+
+    def wait_on_message(self):
+        """
+        Wait for receiving messages from player
+        :return: 
+        """
 
     def choose_map(self):
         """
@@ -77,6 +127,8 @@ def main():
     test = RobocServer()
     test.wait_for_clients()
     test.choose_map()
+    while True:
+        pass
 
 if __name__ == "__main__":
     main()
