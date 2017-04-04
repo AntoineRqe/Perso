@@ -44,6 +44,12 @@ class RobocClient:
                     "id": 2,
                     "operation": self.refresh,
                     "content": None
+                },
+            "Ask":
+                {
+                    "id": 3,
+                    "operation": self.ask,
+                    "content": None
                 }
         }
 
@@ -77,7 +83,7 @@ class RobocClient:
         self.socket = None
         self.channel = "close"
 
-    def make(self, cmd_str):
+    def make(self, cmd_str, **kwargs):
         """
         Function to build JSON to be send
         :param cmd_str: name of the command to send
@@ -89,7 +95,12 @@ class RobocClient:
             print("{} doesn't exist, no message built")
             return msg
 
-        return json.dumps({cmd_str: {"id": msg["id"], "content": msg["content"]}})
+        if "content" in kwargs:
+            content = kwargs["content"]
+        else:
+            content = msg["content"]
+
+        return json.dumps({cmd_str: {"id": msg["id"], "content": content}})
 
     def send(self, msg, tries=5, **kwargs):
         """
@@ -121,7 +132,8 @@ class RobocClient:
         print("{} send presentation {}".format(self.name, msg))
         self.socket.send(msg.encode())
 
-    def refresh(self, game_map=[], **kwargs):
+    @staticmethod
+    def refresh(game_map=[], **kwargs):
         """
         Print the refreshed map on client side
         :param game_map : The map to be printed
@@ -131,6 +143,16 @@ class RobocClient:
         for map_line in game_map:
             map_str += map_line + "\r\n"
         print(map_str)
+
+    def ask(self, **kwargs):
+        """
+        Ask user a command for the robot
+        """
+
+        is_valid_command = False
+        cmd = input("{}, What move do you want to do?\r\n".format(self.name))
+        msg = self.make("Ask", {"content": cmd})
+        self.send(msg)
 
     def wait_on_message(self):
         """

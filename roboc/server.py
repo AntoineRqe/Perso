@@ -42,6 +42,11 @@ class RobocServer:
                 {
                     "id": 2,
                     "content": None
+                },
+            "Ask":
+                {
+                    "id": 3,
+                    "content": None
                 }
         }
 
@@ -160,8 +165,33 @@ class RobocServer:
 
     def wait_on_message(self):
         """
-        Wait for receiving messages from player
+        Receive incoming message and process requested operation
         """
+
+        socket_list = list(self.players.values())
+
+        try:
+            rlist, wlist, xlist = select.select(socket_list, [], [])
+        except select.error:
+            pass
+
+        for read in rlist:
+            raw_msg = read.recv(1024)
+            print("raw message : {}".format(raw_msg))
+            if len(raw_msg) == 0:
+                continue
+
+            msg_dict = json.loads(raw_msg)
+            cmd_key = list(msg_dict.keys())[0]
+            cmd_value = list(msg_dict.values())[0]
+
+            if cmd_key in list(self.cmd_list.keys()):
+                if cmd_value["id"] == self.cmd_list[cmd_key]["id"]:
+                    self.cmd_list[cmd_key]["operation"](cmd_value["content"])
+                else:
+                    print("command ID dismatch, discard message")
+            else:
+                print("{} not found, discard message".format(cmd_key))
 
     def choose_map(self):
         """
