@@ -9,7 +9,7 @@ import select
 import json
 import time
 from interface import game_options
-from messageHandler import MessageHandler
+from messageHandler import MessageHandler, construct_message
 
 
 class RobocServer:
@@ -36,17 +36,17 @@ class RobocServer:
             "Bind":
                 {
                     "id": 1,
-                    "content": None
+                    "operation": self.bind_clients,
                 },
             "Refresh":
                 {
                     "id": 2,
-                    "content": None
+                    "operation": self.refresh_maps,
                 },
-            "Ask":
+            "Action":
                 {
                     "id": 3,
-                    "content": None
+                    "operation": self.process_action,
                 }
         }
 
@@ -83,6 +83,13 @@ class RobocServer:
         self.server.close()
         self.server = None
         self.active = False
+
+    def ask_for_action(self, player):
+        """
+        Ask the current player an action
+        """
+        msg = construct_message("Action")
+        self.send(msg, player)
 
     def send(self, msg, recipient, tries=5, **kwargs):
         """
@@ -131,9 +138,8 @@ class RobocServer:
         :return: 
         """
 
-        for client in client_connected:
-            msg = self.make("Bind")
-            client.send(msg.encode())
+        if self.game_active:
+            return
 
         while len(self.players) < self.max_players:
             rlist, wlist, xlist = select.select(client_connected, [], [])
@@ -143,25 +149,15 @@ class RobocServer:
                         msg = json.loads(read.recv(1024))
                     except json.decoder.JSONDecodeError as e:
                         print(e)
+                        pass
 
-                    self.players[msg["Bind"]["content"]] = read
+                    self.players[msg["Bind"]["args"]] = read
 
-        print("All players are here : {}".format(self.players.keys()))
+        print("All players are here :")
+        for player in self.players.keys():
+            print(player)
+
         self.game_active = True
-
-    def make(self, cmd_str):
-        """
-        Function to build JSON to be send
-        :param cmd_str: name of the command to send
-        :return: a JSON object ready to be sent
-        """
-
-        msg = self.cmd_list.get(cmd_str)
-        if msg is None:
-            print("{} doesn't exist, no message built")
-            return msg
-
-        return json.dumps({cmd_str: msg})
 
     def wait_on_message(self):
         """
@@ -176,18 +172,23 @@ class RobocServer:
             pass
 
         for read in rlist:
-            raw_msg = read.recv(1024)
-            print("raw message : {}".format(raw_msg))
+            raw_msg = read.recv(1024).decode()
             if len(raw_msg) == 0:
                 continue
 
+            print("Received message :\n\r" + raw_msg)
             msg_dict = json.loads(raw_msg)
             cmd_key = list(msg_dict.keys())[0]
             cmd_value = list(msg_dict.values())[0]
 
+            if "args" in cmd_value:
+                args = cmd_value["args"]
+            else:
+                args = None
+
             if cmd_key in list(self.cmd_list.keys()):
                 if cmd_value["id"] == self.cmd_list[cmd_key]["id"]:
-                    self.cmd_list[cmd_key]["operation"](cmd_value["content"])
+                    self.cmd_list[cmd_key]["operation"](args)
                 else:
                     print("command ID dismatch, discard message")
             else:
@@ -211,11 +212,13 @@ class RobocServer:
         Send update maze map to all player
         """
 
-        msg = self.make("Refresh")
+        msg = construct_message("Refresh", args=self.maze.map)
 
         for player_socket in self.players.values():
             self.send(msg,player_socket)
 
+    def process_action(self):
+        pass
 
 def main():
     test = RobocServer()
@@ -223,14 +226,12 @@ def main():
     thread = MessageHandler(test)
     thread.start()
 
-
-
     while not test.game_active:
         time.sleep(5)
 
     test.choose_map()
     while True:
-        pass
+        test.ask_for_action(test.players[test.maze.current_player])
 
 if __name__ == "__main__":
     main()

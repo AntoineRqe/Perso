@@ -4,7 +4,7 @@ import socket
 import json
 import select
 import time
-from messageHandler import MessageHandler
+from messageHandler import MessageHandler, construct_message
 
 
 class RobocClient:
@@ -36,20 +36,17 @@ class RobocClient:
             "Bind":
                 {
                     "id": 1,
-                    "operation": self.bind,
-                    "content": self.name
+                    "operation": self.bind
                 },
             "Refresh":
                 {
                     "id": 2,
-                    "operation": self.refresh,
-                    "content": None
+                    "operation": self.refresh
                 },
-            "Ask":
+            "Action":
                 {
                     "id": 3,
-                    "operation": self.ask,
-                    "content": None
+                    "operation": self.action
                 }
         }
 
@@ -83,25 +80,6 @@ class RobocClient:
         self.socket = None
         self.channel = "close"
 
-    def make(self, cmd_str, **kwargs):
-        """
-        Function to build JSON to be send
-        :param cmd_str: name of the command to send
-        :return: a JSON object ready to be sent
-        """
-
-        msg = self.cmd_list.get(cmd_str)
-        if msg is None:
-            print("{} doesn't exist, no message built")
-            return msg
-
-        if "content" in kwargs:
-            content = kwargs["content"]
-        else:
-            content = msg["content"]
-
-        return json.dumps({cmd_str: {"id": msg["id"], "content": content}})
-
     def send(self, msg, tries=5, **kwargs):
         """
         Function to send the message through the socket
@@ -128,8 +106,7 @@ class RobocClient:
         Function to send name to server
         """
 
-        msg = self.make("Bind")
-        print("{} send presentation {}".format(self.name, msg))
+        msg = construct_message("Bind", args=self.name)
         self.socket.send(msg.encode())
 
     @staticmethod
@@ -144,14 +121,14 @@ class RobocClient:
             map_str += map_line + "\r\n"
         print(map_str)
 
-    def ask(self, **kwargs):
+    def action(self, **kwargs):
         """
         Ask user a command for the robot
         """
 
         is_valid_command = False
         cmd = input("{}, What move do you want to do?\r\n".format(self.name))
-        msg = self.make("Ask", {"content": cmd})
+        msg = construct_message("Ask", {"args": cmd})
         self.send(msg)
 
     def wait_on_message(self):
@@ -168,18 +145,24 @@ class RobocClient:
             pass
 
         for read in rlist:
-            raw_msg = read.recv(1024)
-            print("raw message : {}".format(raw_msg))
+            raw_msg = read.recv(1024).decode()
             if len(raw_msg) == 0:
                 continue
+
+            print("Received message :\n\r" + raw_msg)
 
             msg_dict = json.loads(raw_msg)
             cmd_key = list(msg_dict.keys())[0]
             cmd_value = list(msg_dict.values())[0]
 
+            if "args" in cmd_value:
+                args = cmd_value["args"]
+            else:
+                args = None
+
             if cmd_key in list(self.cmd_list.keys()):
                 if cmd_value["id"] == self.cmd_list[cmd_key]["id"]:
-                    self.cmd_list[cmd_key]["operation"](cmd_value["content"])
+                    self.cmd_list[cmd_key]["operation"](args)
                 else:
                     print("command ID dismatch, discard message")
             else:
