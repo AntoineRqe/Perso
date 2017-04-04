@@ -3,13 +3,19 @@
 import socket
 import json
 import select
+import time
+from messageHandler import MessageHandler
+
 
 class RobocClient:
     """
     Class to define the roboc player on the server
     """
 
-    def __init__(self, host="localhost", port=12800, name="antoine", **kwargs):
+    def __init__(self, host="localhost", port=12800, name="antoine", auto=True, **kwargs):
+
+        self.channel = "close"
+        self.socket = None
 
         if kwargs.get("host") is not None:
             self.host = kwargs["host"]
@@ -26,22 +32,105 @@ class RobocClient:
         else:
             self.name = name
 
-        self.reply_list = {"Bind": {
-            "id": 1,
-            "operation": self.send_presentation
-        }}
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((self.host, self.port))
-        print("{} is connected to server with port {}".format(self.name, self.port))
+        self.cmd_list = {
+            "Bind":
+                {
+                    "id": 1,
+                    "operation": self.bind,
+                    "content": self.name
+                },
+            "Refresh":
+                {
+                    "id": 2,
+                    "operation": self.refresh,
+                    "content": None
+                }
+        }
 
-    def send_presentation(self, *args, **kwargs):
+        if auto:
+            self.connect()
+
+    def connect(self):
+        """
+        Function to connect to given server
+        And bind the connection
+        """
+        try:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.connect((self.host, self.port))
+        except ConnectionRefusedError as e:
+            print(e)
+            return False
+
+        print("{} is connected to server with port {}".format(self.name, self.port))
+        self.bind()
+        self.channel = "open"
+        return True
+
+    def disconnect(self):
+        """
+        Function to disconnected from the server
+        """
+        if self.socket is not None and self.channel == "open":
+            self.socket.close()
+
+        self.socket = None
+        self.channel = "close"
+
+    def make(self, cmd_str):
+        """
+        Function to build JSON to be send
+        :param cmd_str: name of the command to send
+        :return: a JSON object ready to be sent
+        """
+
+        msg = self.cmd_list.get(cmd_str)
+        if msg is None:
+            print("{} doesn't exist, no message built")
+            return msg
+
+        return json.dumps({cmd_str: {"id": msg["id"], "content": msg["content"]}})
+
+    def send(self, msg, tries=5, **kwargs):
+        """
+        Function to send the message through the socket
+        :param msg: message to be send
+        :param tries: number of tries before and
+        """
+
+        if tries == 0:
+            print("Impossible to send message")
+            return
+
+        if self.socket is None:
+            print("Socket not opened...")
+            return
+
+        if self.channel == "close":
+            self.connect()
+            return self.send(msg, tries=tries-1, **kwargs)
+
+        self.socket.send(msg.encode())
+
+    def bind(self, *args, **kwargs):
         """
         Function to send name to server
         """
 
-        msg = json.dumps({"id": 1, "content": self.name})
+        msg = self.make("Bind")
         print("{} send presentation {}".format(self.name, msg))
         self.socket.send(msg.encode())
+
+    def refresh(self, game_map=[], **kwargs):
+        """
+        Print the refreshed map on client side
+        :param game_map : The map to be printed
+        """
+
+        map_str = str()
+        for map_line in game_map:
+            map_str += map_line + "\r\n"
+        print(map_str)
 
     def wait_on_message(self):
         """
@@ -66,9 +155,9 @@ class RobocClient:
             cmd_key = list(msg_dict.keys())[0]
             cmd_value = list(msg_dict.values())[0]
 
-            if cmd_key in list(self.reply_list.keys()):
-                if cmd_value["id"] == self.reply_list[cmd_key]["id"]:
-                    self.reply_list[cmd_key]["operation"]()
+            if cmd_key in list(self.cmd_list.keys()):
+                if cmd_value["id"] == self.cmd_list[cmd_key]["id"]:
+                    self.cmd_list[cmd_key]["operation"](cmd_value["content"])
                 else:
                     print("command ID dismatch, discard message")
             else:
@@ -78,9 +167,15 @@ class RobocClient:
 def main():
     test1 = RobocClient(name="antoine")
     test2 = RobocClient(name="remi")
+
+    thread1 = MessageHandler(test1)
+    thread2 = MessageHandler(test2)
+
+    thread1.start()
+    thread2.start()
+
     while True:
-        test1.wait_on_message()
-        test2.wait_on_message()
+        time.sleep(5)
 
 if __name__ == "__main__":
     main()
