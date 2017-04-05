@@ -10,6 +10,7 @@ import json
 import time
 from interface import game_options
 from messageHandler import MessageHandler, construct_message
+import threading
 
 
 class RobocServer:
@@ -32,6 +33,7 @@ class RobocServer:
         self.server = None
         self.active = False
         self.game_active = False
+        self.wait_action = threading.Event()
         self.cmd_list = {
             "Bind":
                 {
@@ -80,6 +82,11 @@ class RobocServer:
         if self.server is None:
             return
 
+        self.game_active = False
+
+        for player_socket in self.players.values():
+            player_socket.close
+
         self.server.close()
         self.server = None
         self.active = False
@@ -90,6 +97,8 @@ class RobocServer:
         """
         msg = construct_message("Action")
         self.send(msg, player)
+        if self.wait_action.is_set():
+            self.wait_action.clear()
 
     def send(self, msg, recipient, tries=5, **kwargs):
         """
@@ -217,8 +226,19 @@ class RobocServer:
         for player_socket in self.players.values():
             self.send(msg,player_socket)
 
-    def process_action(self):
-        pass
+    def process_action(self, action):
+        """
+        Process the given action by client
+        """
+        action = action.upper()
+        is_valid_command = self.maze.is_command_valid(action)
+        while not is_valid_command:
+            self.ask_for_action(self.players[self.maze.current_player])
+
+        self.maze.robot_commands[action[0]]["cmd"](action)
+        self.refresh_maps()
+        self.wait_action.set()
+
 
 def main():
     test = RobocServer()
@@ -232,6 +252,9 @@ def main():
     test.choose_map()
     while True:
         test.ask_for_action(test.players[test.maze.current_player])
+        test.wait_action.wait()
+        if test.maze.is_maze_resolved():
+            test.stop_server()
 
 if __name__ == "__main__":
     main()

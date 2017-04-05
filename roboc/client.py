@@ -110,7 +110,7 @@ class RobocClient:
         self.socket.send(msg.encode())
 
     @staticmethod
-    def refresh(game_map=[], **kwargs):
+    def refresh(game_map=[], *args, **kwargs):
         """
         Print the refreshed map on client side
         :param game_map : The map to be printed
@@ -121,14 +121,13 @@ class RobocClient:
             map_str += map_line + "\r\n"
         print(map_str)
 
-    def action(self, **kwargs):
+    def action(self, *args, **kwargs):
         """
         Ask user a command for the robot
         """
 
-        is_valid_command = False
         cmd = input("{}, What move do you want to do?\r\n".format(self.name))
-        msg = construct_message("Ask", {"args": cmd})
+        msg = construct_message("Action", args=cmd)
         self.send(msg)
 
     def wait_on_message(self):

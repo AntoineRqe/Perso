@@ -25,7 +25,7 @@ generic_commands["Refresh"] = {"id": 2}
 generic_commands["Action"] = {"id": 3}
 
 
-def construct_message(cmd_name, **kwargs):
+def construct_message(cmd_name, *args, **kwargs):
     """
     Function to build JSON to be send
     :param cmd_name: name of the command to send
