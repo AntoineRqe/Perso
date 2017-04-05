@@ -9,6 +9,7 @@ import select
 import json
 import time
 from interface import game_options
+from collections import OrderedDict
 from messageHandler import MessageHandler, construct_message
 import threading
 
@@ -26,13 +27,13 @@ class RobocServer:
         :param kwargs: optional argument
         """
 
-        self.players = {}
-
+        self.players = OrderedDict()
         self.maze = None
         self.max_players = 2
         self.server = None
         self.active = False
         self.game_active = False
+        self.MsgHandler = None
         self.wait_action = threading.Event()
         self.cmd_list = {
             "Bind":
@@ -83,6 +84,9 @@ class RobocServer:
             return
 
         self.game_active = False
+
+        self.MsgHandler.terminate()
+        self.MsgHandler.join()
 
         for player_socket in self.players.values():
             player_socket.close
@@ -166,42 +170,10 @@ class RobocServer:
         for player in self.players.keys():
             print(player)
 
+        self.MsgHandler = MessageHandler(self)
+        self.MsgHandler.start()
+
         self.game_active = True
-
-    def wait_on_message(self):
-        """
-        Receive incoming message and process requested operation
-        """
-
-        socket_list = list(self.players.values())
-
-        try:
-            rlist, wlist, xlist = select.select(socket_list, [], [])
-        except select.error:
-            pass
-
-        for read in rlist:
-            raw_msg = read.recv(1024).decode()
-            if len(raw_msg) == 0:
-                continue
-
-            print("Received message :\n\r" + raw_msg)
-            msg_dict = json.loads(raw_msg)
-            cmd_key = list(msg_dict.keys())[0]
-            cmd_value = list(msg_dict.values())[0]
-
-            if "args" in cmd_value:
-                args = cmd_value["args"]
-            else:
-                args = None
-
-            if cmd_key in list(self.cmd_list.keys()):
-                if cmd_value["id"] == self.cmd_list[cmd_key]["id"]:
-                    self.cmd_list[cmd_key]["operation"](args)
-                else:
-                    print("command ID dismatch, discard message")
-            else:
-                print("{} not found, discard message".format(cmd_key))
 
     def choose_map(self):
         """
@@ -230,10 +202,13 @@ class RobocServer:
         """
         Process the given action by client
         """
+
         action = action.upper()
+        print("Process action {}".format(action))
         is_valid_command = self.maze.is_command_valid(action)
-        while not is_valid_command:
+        if not is_valid_command:
             self.ask_for_action(self.players[self.maze.current_player])
+            return
 
         self.maze.robot_commands[action[0]]["cmd"](action)
         self.refresh_maps()
@@ -243,8 +218,6 @@ class RobocServer:
 def main():
     test = RobocServer()
     test.wait_for_clients()
-    thread = MessageHandler(test)
-    thread.start()
 
     while not test.game_active:
         time.sleep(5)
