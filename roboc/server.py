@@ -19,7 +19,7 @@ class RobocServer:
     Class to implement server side based on socket
     """
 
-    def __init__(self, host="", port=12800, auto=True, **kwargs):
+    def __init__(self, host="", port=12800, auto=True, max=2, **kwargs):
         """
         Initialise the server
         :param host: name of host server
@@ -29,7 +29,6 @@ class RobocServer:
 
         self.players = OrderedDict()
         self.maze = None
-        self.max_players = 2
         self.server = None
         self.active = False
         self.game_active = False
@@ -59,15 +58,20 @@ class RobocServer:
                 }
         }
 
-        if kwargs.get("host") is not None:
+        try:
             self.host = kwargs["host"]
-        else:
+        except KeyError:
             self.host = host
 
-        if kwargs.get("port") is not None:
+        try:
             self.port = kwargs["port"]
-        else:
+        except KeyError:
             self.port = port
+
+        try:
+            self.max_players = kwargs["max"]
+        except KeyError:
+            self.max_players = max
 
         if auto:
             self.start_server()
@@ -81,6 +85,7 @@ class RobocServer:
         self.server.listen(5)
         self.active = True
         print("Server connected on {} with port {}".format(self.host, self.port))
+        self.wait_for_clients()
 
     def stop_server(self):
         """
@@ -176,6 +181,7 @@ class RobocServer:
                 if len(client_connected) < self.max_players:
                     open_sockets, infos_connections = client_request.accept()
                     client_connected.append(open_sockets)
+                    print("{} players are connected on the server".format(len(client_connected)))
 
         self.bind_clients(client_connected)
 
@@ -200,9 +206,11 @@ class RobocServer:
 
                     self.players[msg["Bind"]["args"]] = read
 
-        print("All players are here :")
+        sum_up_str = "All players are here :\n\r"
         for player in self.players.keys():
-            print(player)
+            sum_up_str += "\t{}\n\r".format(player)
+
+        print(sum_up_str)
 
         self.MsgHandler = MessageHandler(self)
         self.MsgHandler.start()
@@ -270,7 +278,6 @@ class RobocServer:
 
 def main():
     test = RobocServer()
-    test.wait_for_clients()
 
     while not test.game_active:
         time.sleep(1)
