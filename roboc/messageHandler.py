@@ -45,7 +45,7 @@ class MessageHandler(Thread):
             if len(raw_msg) == 0:
                 continue
 
-            print("Received message :\n\r" + raw_msg)
+            # print("Received message :\n\r" + raw_msg)
 
             try:
                 msg_dict = json.loads(raw_msg)
@@ -76,6 +76,7 @@ generic_commands["Bind"] = {"id": 1}
 generic_commands["Refresh"] = {"id": 2}
 generic_commands["Action"] = {"id": 3}
 generic_commands["Intro"] = {"id": 4}
+generic_commands["Wait"] = {"id": 5}
 
 
 def construct_message(cmd_name, *args, **kwargs):

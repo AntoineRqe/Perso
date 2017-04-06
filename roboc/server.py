@@ -38,13 +38,11 @@ class RobocServer:
         self.cmd_list = {
             "Bind":
                 {
-                    "id": 1,
-                    "operation": self.bind_clients,
+                    "id": 1
                 },
             "Refresh":
                 {
-                    "id": 2,
-                    "operation": self.refresh_maps,
+                    "id": 2
                 },
             "Action":
                 {
@@ -53,8 +51,11 @@ class RobocServer:
                 },
             "Intro":
                 {
-                    "id": 4,
-                    "operation": self.introduction
+                    "id": 4
+                },
+            "Wait":
+                {
+                    "id": 5
                 }
         }
 
@@ -111,21 +112,29 @@ class RobocServer:
             msg = construct_message("Intro", args=new_welcome)
             link.send(msg.encode())
 
-    def cmd_usage(self, player_socket):
+    def cmd_usage(self, player):
         """
         Send robot instructions to player
-         :param : socket to be used to send data
+         :param : name of the player
         """
 
         instruction = self.maze.cmd_usage()
-        player_socket.send(instruction.encode())
+        self.players[player].send(instruction.encode())
 
     def ask_for_action(self, player):
         """
         Ask the current player an action
+        :param player: name of the player to send the message to
         """
-        msg = construct_message("Action")
-        self.send(msg, player)
+
+        for name, link in self.players.items():
+            if name == player:
+                msg = construct_message("Action")
+            else:
+                msg = construct_message("Wait", args="Waiting for {} to play...".format(player))
+
+            self.send(msg, link)
+
         if self.wait_action.is_set():
             self.wait_action.clear()
 
@@ -228,11 +237,10 @@ class RobocServer:
         """
 
         action = action.upper()
-        print("Process action {}".format(action))
         is_valid_command = self.maze.is_command_valid(action)
         if not is_valid_command:
-            self.cmd_usage(self.players[self.maze.current_player])
-            self.ask_for_action(self.players[self.maze.current_player])
+            self.cmd_usage(self.maze.current_player)
+            self.ask_for_action(self.maze.current_player)
             return
 
         self.maze.robot_commands[action[0]]["cmd"](action)
@@ -275,7 +283,7 @@ def main():
     time.sleep(0.1)
 
     while True:
-        test.ask_for_action(test.players[test.maze.current_player])
+        test.ask_for_action(test.maze.current_player)
         test.wait_action.wait()
         if test.maze.is_maze_resolved():
             test.stop_server()

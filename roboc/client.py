@@ -34,8 +34,7 @@ class RobocClient:
         self.cmd_list = {
             "Bind":
                 {
-                    "id": 1,
-                    "operation": self.bind
+                    "id": 1
                 },
             "Refresh":
                 {
@@ -51,6 +50,11 @@ class RobocClient:
                 {
                     "id": 4,
                     "operation": self.introduction
+                },
+            "Wait":
+                {
+                    "id": 5,
+                    "operation": self.wait_other_player_action
                 }
         }
 
@@ -118,12 +122,19 @@ class RobocClient:
         self.server.send(msg.encode())
 
     @staticmethod
-    def introduction(intro=str(), *args, **kwargs):
+    def introduction(intro=str()):
         """
         Print welcome message
         :param intro: string to print
         """
         print(intro)
+
+    @staticmethod
+    def wait_other_player_action(wait_msg=str()):
+        """
+        Print wait message
+        """
+        print(wait_msg)
 
     @staticmethod
     def refresh(game_map=[], *args, **kwargs):
