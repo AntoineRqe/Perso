@@ -64,7 +64,7 @@ def main():
         is_valid_command = False
         while not is_valid_command:
             print("------------------------------------------")
-            my_maze.print_cmd_usage()
+            print(my_maze.cmd_usage())
             cmd = str(input("{}, what does the robot do?\r\n"
                             .format(my_maze.players[my_maze.current_player]))).upper()
             is_valid_command = my_maze.is_command_valid(cmd)

@@ -50,6 +50,11 @@ class RobocServer:
                 {
                     "id": 3,
                     "operation": self.process_action,
+                },
+            "Intro":
+                {
+                    "id": 4,
+                    "operation": self.introduction
                 }
         }
 
@@ -94,6 +99,26 @@ class RobocServer:
         self.server.close()
         self.server = None
         self.active = False
+
+    def introduction(self):
+        """
+        Send introduction message to all players
+        """
+
+        welcome = self.initialisation_string()
+        for name, link in self.players.items():
+            new_welcome = welcome + "You are robot {}!\n\r".format(self.maze.players[name])
+            msg = construct_message("Intro", args=new_welcome)
+            link.send(msg.encode())
+
+    def cmd_usage(self, player_socket):
+        """
+        Send robot instructions to player
+         :param : socket to be used to send data
+        """
+
+        instruction = self.maze.cmd_usage()
+        player_socket.send(instruction.encode())
 
     def ask_for_action(self, player):
         """
@@ -186,7 +211,6 @@ class RobocServer:
 
         self.maze = Maze(game_options["S"]["cmd"](labyrinths), list(self.players.keys()))
         self.cmd_list["Refresh"]["content"] = self.maze.map
-        self.refresh_maps()
 
     def refresh_maps(self):
         """
@@ -207,6 +231,7 @@ class RobocServer:
         print("Process action {}".format(action))
         is_valid_command = self.maze.is_command_valid(action)
         if not is_valid_command:
+            self.cmd_usage(self.players[self.maze.current_player])
             self.ask_for_action(self.players[self.maze.current_player])
             return
 
@@ -214,15 +239,41 @@ class RobocServer:
         self.refresh_maps()
         self.wait_action.set()
 
+    def initialisation_string(self):
+        """
+        Usage for user
+        """
+        return "---------------------------------------------------------------------\r\n" + \
+               "Welcome in the labyrinth game.\r\n" + \
+               "We have {} players in the game.\r\n".format(self.max_players) + \
+               "With your robot, you have to exit the maze\r\n" + \
+               "On the map is displayed\r\n" + \
+               "\tO : Wall\r\n" + \
+               "\t1 : Robot\r\n" + \
+               "\t. : Door\r\n" + \
+               "\tU : Exit\r\n" + \
+               "You can move the robot using a direction(N,W,S,E,M,P) and number of steps\r\n" + \
+               "Example of use:\r\n" + \
+               "\tE5 : 5 steps to east direction\r\n" + \
+               "\tN3 : 3 steps to north direction\r\n" + \
+               "\tMN : Transform door into wall in north direction\r\n" + \
+               "---------------------------------------------------------------------\r\n"
+
 
 def main():
     test = RobocServer()
     test.wait_for_clients()
 
     while not test.game_active:
-        time.sleep(5)
+        time.sleep(1)
 
     test.choose_map()
+    time.sleep(0.1)
+    test.introduction()
+    time.sleep(0.1)
+    test.refresh_maps()
+    time.sleep(0.1)
+
     while True:
         test.ask_for_action(test.players[test.maze.current_player])
         test.wait_action.wait()

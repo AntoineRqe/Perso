@@ -139,13 +139,15 @@ class Maze:
 
         return x, y
 
-    def print_cmd_usage(self):
+    def cmd_usage(self):
         """
         Print all robot commands available
         """
-        print("List of robot command : ")
+        usage_str = "List of robot command : \n\r"
         for key, body in self.robot_commands.items():
-            print("%s : %s" % (key, body["desc"]))
+            usage_str += "{0} : {1}\n\r".format(key, body["desc"])
+
+        return usage_str
 
     def update_robot_position(self, player, coordinate):
         """

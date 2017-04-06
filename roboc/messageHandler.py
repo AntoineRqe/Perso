@@ -75,6 +75,7 @@ generic_commands = dict()
 generic_commands["Bind"] = {"id": 1}
 generic_commands["Refresh"] = {"id": 2}
 generic_commands["Action"] = {"id": 3}
+generic_commands["Intro"] = {"id": 4}
 
 
 def construct_message(cmd_name, *args, **kwargs):

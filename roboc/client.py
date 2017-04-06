@@ -46,6 +46,11 @@ class RobocClient:
                 {
                     "id": 3,
                     "operation": self.action
+                },
+            "Intro":
+                {
+                    "id": 4,
+                    "operation": self.introduction
                 }
         }
 
@@ -111,6 +116,14 @@ class RobocClient:
 
         msg = construct_message("Bind", args=self.name)
         self.server.send(msg.encode())
+
+    @staticmethod
+    def introduction(intro=str(), *args, **kwargs):
+        """
+        Print welcome message
+        :param intro: string to print
+        """
+        print(intro)
 
     @staticmethod
     def refresh(game_map=[], *args, **kwargs):
