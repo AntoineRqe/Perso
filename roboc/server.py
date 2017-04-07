@@ -80,11 +80,12 @@ class RobocServer:
         """
         Start the server
         """
+        print("Start the server...")
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind((self.host, self.port))
         self.server.listen(5)
         self.active = True
-        print("Server connected on {} with port {}".format(self.host, self.port))
+        print("Server connected on localhost with port {}".format(self.host, self.port))
         self.wait_for_clients()
 
     def stop_server(self):
@@ -92,6 +93,7 @@ class RobocServer:
         Stop the server
         """
         if self.server is None:
+            print("Server not initialised, nothing to stop...")
             return
 
         self.game_active = False
@@ -170,6 +172,7 @@ class RobocServer:
         :param timeout time to wait for client in second 
         """
 
+        print("Waiting for client to connect...")
         client_connected = []
 
         while len(client_connected) < self.max_players:
@@ -200,6 +203,9 @@ class RobocServer:
                 if len(self.players) < self.max_players:
                     try:
                         msg = json.loads(read.recv(1024))
+                    except ConnectionError:
+                        pass
+
                     except json.decoder.JSONDecodeError as e:
                         print(e)
                         pass

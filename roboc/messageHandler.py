@@ -25,11 +25,14 @@ class MessageHandler(Thread):
         Receive incoming message and process requested operation
         """
 
-        if hasattr(self.link, "players"):
+        is_Server = True
+
+        try:
             socket_list = list(self.link.players.values())
-        else:
+        except AttributeError:
             socket_list = list()
             socket_list.append(self.link.server)
+            is_Server = False
 
         try:
             rlist, wlist, xlist = select.select(socket_list, [], [])
@@ -41,6 +44,7 @@ class MessageHandler(Thread):
                 raw_msg = read.recv(1024).decode()
             except ConnectionError:
                 print("Connection broken!")
+                return
 
             if len(raw_msg) == 0:
                 continue
@@ -56,9 +60,9 @@ class MessageHandler(Thread):
             cmd_key = list(msg_dict.keys())[0]
             cmd_value = list(msg_dict.values())[0]
 
-            if "args" in cmd_value:
+            try:
                 args = cmd_value["args"]
-            else:
+            except KeyError:
                 args = None
 
             if cmd_key in list(self.link.cmd_list.keys()):
@@ -68,7 +72,6 @@ class MessageHandler(Thread):
                     print("command ID dismatch, discard message")
             else:
                 print("{} not found, discard message".format(cmd_key))
-
 
 
 generic_commands = dict()
@@ -86,19 +89,17 @@ def construct_message(cmd_name, *args, **kwargs):
     :return: a JSON object ready to be sent
     """
 
-    cmd_arg = generic_commands.get(cmd_name)
-
-    if cmd_arg is None:
-        print("{} doesn't exist, no message built")
-        return cmd_arg
-
     msg = dict({cmd_name: {}})
-    msg[cmd_name]["id"] = cmd_arg["id"]
+    try:
+        msg[cmd_name]["id"] = generic_commands[cmd_name]["id"]
+    except KeyError:
+        print("{} doesn't exist, discard message".format(cmd_name))
+        return
 
-    if "args" in kwargs:
+    try:
         msg[cmd_name]["args"] = kwargs["args"]
+    except KeyError:
+        pass
 
     msg = json.dumps(msg, indent=4)
-    # print("Make : {}".format(msg))
-
     return msg

@@ -16,19 +16,19 @@ class RobocClient:
         self.server = None
         self.MsgHandler = None
 
-        if kwargs.get("host") is not None:
+        try:
             self.host = kwargs["host"]
-        else:
+        except KeyError:
             self.host = host
 
-        if kwargs.get("port") is not None:
+        try:
             self.port = kwargs["port"]
-        else:
+        except KeyError:
             self.port = port
 
-        if kwargs.get("name") is not None:
+        try:
             self.name = kwargs["name"]
-        else:
+        except KeyError:
             self.name = name
 
         self.cmd_list = {
