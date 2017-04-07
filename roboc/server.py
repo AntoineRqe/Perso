@@ -10,7 +10,7 @@ import json
 import time
 from interface import game_options
 from collections import OrderedDict
-from messageHandler import MessageHandler, construct_message
+from messageHandler import MessageHandler, construct_message, send
 import threading
 
 
@@ -81,7 +81,6 @@ class RobocServer:
 
         self.game_active = False
 
-        self.MsgHandler.terminate()
         self.MsgHandler.join()
 
         for player_socket in self.players.values():
@@ -100,7 +99,7 @@ class RobocServer:
         for name, link in self.players.items():
             new_welcome = welcome + "You are robot {}!\n\r".format(self.maze.players[name])
             msg = construct_message("Intro", args=new_welcome)
-            link.send(msg.encode())
+            send(msg, link)
 
     def cmd_usage(self, player):
         """
@@ -109,7 +108,8 @@ class RobocServer:
         """
 
         instruction = self.maze.cmd_usage()
-        self.players[player].send(instruction.encode())
+        msg = construct_message("Usage", args=instruction)
+        send(msg, self.players[player])
 
     def ask_for_action(self, player):
         """
@@ -123,31 +123,10 @@ class RobocServer:
             else:
                 msg = construct_message("Wait", args="Waiting for {} to play...".format(player))
 
-            self.send(msg, link)
+            send(msg, link)
 
         if self.wait_action.is_set():
             self.wait_action.clear()
-
-    def send(self, msg, recipient, tries=5, **kwargs):
-        """
-        Send a message thought the socket
-        :param msg : message to be sent
-        :param recipient: socket to the recipient
-        """
-
-        if tries == 0:
-            print("Impossible to send message")
-            return
-
-        if self.server is None:
-            print("Socket not opened...")
-            return
-
-        if not self.active:
-            self.connect()
-            return self.send(msg, tries=tries-1, **kwargs)
-
-        recipient.send(msg.encode())
 
     def wait_for_clients(self):
         """
@@ -224,7 +203,7 @@ class RobocServer:
         msg = construct_message("Refresh", args=self.maze.map)
 
         for player_socket in self.players.values():
-            self.send(msg, player_socket)
+            send(msg, player_socket)
 
     def process_action(self, action):
         """

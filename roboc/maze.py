@@ -191,35 +191,29 @@ class Maze:
             return False
 
         if self.robot_commands[cmd[0]]["type"] == "move":
-            if len(cmd) == 1:
-                return True
-            elif cmd[1:].isdigit():
-                return True
+            if len(cmd) == 1 or (len(cmd) > 1 and cmd[1:].isdigit()):
+                return self.is_itinerary_clear(cmd)
             else:
                 return False
 
         elif self.robot_commands[cmd[0]]["type"] == "transform":
-            if len(cmd) != 2:
-                return False
-            elif cmd[1] in ("N", "E", "S", "W"):
+            if len(cmd) == 2 and cmd[1] in ("N", "E", "S", "W"):
                 return True
             else:
                 return False
 
         elif self.robot_commands[cmd[0]]["type"] == "option":
-            if len(cmd) == 1:
+            try:
+                cmd[1]
                 return True
-            else:
+            except IndexError:
                 return False
 
     def move(self, cmd):
-        if len(cmd) == 1:
-            step = 1
-        else:
+        try:
             step = int(cmd[1:])
-
-        if not self.is_itinerary_clear(cmd[0], step):
-            return
+        except ValueError:
+            step = 1
 
         x, y = self.calculate_coordinate(cmd[0], step)
         self.update_robot_position(self.current_player, (x, y))
@@ -288,16 +282,19 @@ class Maze:
 
         return x, y
 
-    def is_itinerary_clear(self, cmd_direction, cmd_steps):
+    def is_itinerary_clear(self, cmd):
         """
         Dry run the itinerary of robot and check if any obstacle
-        :param cmd_direction: direction to follow
-        :param cmd_steps: number of step in that direction
+        :param cmd: command to check
         :return: True if path is clean, False if and obstacles found
         """
 
-        if type(cmd_direction) != str or type(cmd_steps) != int or cmd_steps < 0 or len(cmd_direction) != 1:
-            return False
+        cmd_direction = cmd[0]
+
+        try:
+            cmd_steps = int(cmd[1:])
+        except ValueError:
+            cmd_steps = 1
 
         try:
             future_coordinate = self.calculate_coordinate(cmd_direction, cmd_steps)

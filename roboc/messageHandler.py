@@ -25,14 +25,11 @@ class MessageHandler(Thread):
         Receive incoming message and process requested operation
         """
 
-        is_Server = True
-
         try:
             socket_list = list(self.link.players.values())
         except AttributeError:
             socket_list = list()
             socket_list.append(self.link.server)
-            is_Server = False
 
         try:
             rlist, wlist, xlist = select.select(socket_list, [], [])
@@ -71,7 +68,7 @@ class MessageHandler(Thread):
                 print("{} not found, discard message".format(cmd_key))
 
 
-all_commands = ["Bind", "Refresh", "Action", "Intro", "Wait"]
+all_commands = ["Bind", "Refresh", "Action", "Intro", "Wait", "Usage"]
 
 
 def construct_message(cmd_name, *args, **kwargs):
@@ -94,3 +91,18 @@ def construct_message(cmd_name, *args, **kwargs):
 
     msg = json.dumps(msg, indent=4)
     return msg
+
+
+def send(msg, recipient, tries=5):
+    """
+    Send a message thought the socket
+    :param msg : message to be sent
+    :param recipient: socket to the recipient
+    :param tries : number of maximum tries to send a message
+    """
+
+    if tries == 0:
+        print("Reach send maximum tries, impossible to send the message")
+        return
+
+    recipient.send(msg.encode())

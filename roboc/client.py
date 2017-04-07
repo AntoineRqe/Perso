@@ -2,7 +2,7 @@
 
 import socket
 import time
-from messageHandler import MessageHandler, construct_message
+from messageHandler import MessageHandler, construct_message, send
 
 
 class RobocClient:
@@ -47,6 +47,10 @@ class RobocClient:
             "Wait":
                 {
                     "operation": self.wait_other_player_action
+                },
+            "Usage":
+                {
+                    "operation": self.cmd_usage
                 }
         }
 
@@ -84,34 +88,13 @@ class RobocClient:
         self.server = None
         self.channel = "close"
 
-    def send(self, msg, tries=5, **kwargs):
-        """
-        Function to send the message through the socket
-        :param msg: message to be send
-        :param tries: number of tries before and
-        """
-
-        if tries == 0:
-            print("Impossible to send message")
-            return
-
-        if self.server is None:
-            print("Socket not opened...")
-            return
-
-        if self.channel == "close":
-            self.connect()
-            return self.send(msg, tries=tries-1, **kwargs)
-
-        self.server.send(msg.encode())
-
     def bind(self, *args, **kwargs):
         """
         Function to send name to server
         """
 
         msg = construct_message("Bind", args=self.name)
-        self.server.send(msg.encode())
+        send(msg, self.server)
 
     @staticmethod
     def introduction(intro=str()):
@@ -129,7 +112,7 @@ class RobocClient:
         print(wait_msg)
 
     @staticmethod
-    def refresh(game_map=[], *args, **kwargs):
+    def refresh(game_map=[]):
         """
         Print the refreshed map on client side
         :param game_map : The map to be printed
@@ -140,6 +123,13 @@ class RobocClient:
             map_str += map_line + "\r\n"
         print(map_str)
 
+    @staticmethod
+    def cmd_usage(usage=str()):
+        """
+        Print usage command
+        """
+        print(usage)
+
     def action(self, *args, **kwargs):
         """
         Ask user a command for the robot
@@ -147,7 +137,7 @@ class RobocClient:
 
         cmd = input("{}, What move do you want to do?\r\n".format(self.name))
         msg = construct_message("Action", args=cmd)
-        self.send(msg)
+        send(msg, self.server)
 
 
 def main():
