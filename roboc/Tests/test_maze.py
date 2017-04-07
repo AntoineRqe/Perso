@@ -187,58 +187,37 @@ class MazeTest(unittest.TestCase):
         self.assertFalse(self.maze.is_command_valid("M."))
         self.assertTrue(self.maze.is_command_valid("MN"))
 
-    # def test_move(self):
-    #     self.maze.move("N1")
-    #     self.assertEqual(self.maze.map, test_maps_1N)
-    #     self.maze.move("S1")
-    #     self.assertEqual(self.maze.map, test_maps)
-    #
-    #     self.maze.move("S1")
-    #     self.assertEqual(self.maze.map, test_maps)
-    #     self.maze.move("N")
-    #     self.assertEqual(self.maze.map, test_maps_1N)
-    #     self.maze.move("S1")
-    #     self.assertEqual(self.maze.map, test_maps)
-    #
-    #     self.maze.move("E1")
-    #     self.assertEqual(self.maze.map, test_maps_1E)
-    #     self.maze.move("W1")
-    #     self.assertEqual(self.maze.map, test_maps)
-    #
-    #     self.maze.move("W")
-    #     self.assertEqual(self.maze.map, test_maps)
-    #     self.maze.move("E1")
-    #     self.assertEqual(self.maze.map, test_maps_1E)
-    #     self.maze.move("W1")
-    #     self.assertEqual(self.maze.map, test_maps)
-    #
-    # def test_put_wall(self):
-    #     self.maze.put_door("PW")
-    #     self.assertEqual(self.maze.clean_map, clean_test_maps_door_W)
-    #
-    #     self.maze.put_wall("MW")
-    #     self.assertEqual(self.maze.clean_map, clean_test_maps)
-    #
-    # def test_init_robot_position(self):
-    #     for i in range(0, 100):
-    #         self.assertGreater(self.maze.size[0], self.maze.init_robot_position()[0])
-    #         self.assertLessEqual(0, self.maze.init_robot_position()[0])
-    #         self.assertGreater(self.maze.size[1], self.maze.init_robot_position()[1])
-    #         self.assertLessEqual(0, self.maze.init_robot_position()[1])
-    #
-    # @staticmethod
-    # def test_save():
-    #     """
-    #     Test  save function
-    #     """
-    #     pass
-    #
-    # def test_init_robot_position(self, return_value):
-    #     """
-    #     Test the init robot position
-    #     """
-    #     result = self.maze.init_robot_position()
-    #     self.assertEqual((1, 1), result)
+    def test_move(self):
+        self.maze.move("N1")
+        self.assertEqual(self.maze.map, test_maps_1N)
+        self.maze.move("S1")
+        self.assertEqual(self.maze.map, test_maps)
+
+        self.maze.move("E1")
+        self.assertEqual(self.maze.map, test_maps_1E)
+        self.maze.move("W1")
+        self.assertEqual(self.maze.map, test_maps)
+
+    def test_put_wall(self):
+        self.maze.put_door("PW")
+        self.assertEqual(self.maze.clean_map, clean_test_maps_door_W)
+
+        self.maze.put_wall("MW")
+        self.assertEqual(self.maze.clean_map, clean_test_maps)
+
+    def test_init_robot_position(self):
+        for i in range(0, 100):
+            self.assertGreater(self.maze.size[0], self.maze.init_robot_position()[0])
+            self.assertLessEqual(0, self.maze.init_robot_position()[0])
+            self.assertGreater(self.maze.size[1], self.maze.init_robot_position()[1])
+            self.assertLessEqual(0, self.maze.init_robot_position()[1])
+
+    @staticmethod
+    def test_save():
+        """
+        Test  save function
+        """
+        pass
 
 if __name__ == "__main__":
     unittest.main()

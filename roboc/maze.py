@@ -205,9 +205,9 @@ class Maze:
         elif self.robot_commands[cmd[0]]["type"] == "option":
             try:
                 cmd[1]
-                return True
-            except IndexError:
                 return False
+            except IndexError:
+                return True
 
     def move(self, cmd):
         try:
