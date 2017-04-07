@@ -66,20 +66,12 @@ class MessageHandler(Thread):
                 args = None
 
             if cmd_key in list(self.link.cmd_list.keys()):
-                if cmd_value["id"] == self.link.cmd_list[cmd_key]["id"]:
-                    self.link.cmd_list[cmd_key]["operation"](args)
-                else:
-                    print("command ID dismatch, discard message")
+                self.link.cmd_list[cmd_key]["operation"](args)
             else:
                 print("{} not found, discard message".format(cmd_key))
 
 
-generic_commands = dict()
-generic_commands["Bind"] = {"id": 1}
-generic_commands["Refresh"] = {"id": 2}
-generic_commands["Action"] = {"id": 3}
-generic_commands["Intro"] = {"id": 4}
-generic_commands["Wait"] = {"id": 5}
+all_commands = ["Bind", "Refresh", "Action", "Intro", "Wait"]
 
 
 def construct_message(cmd_name, *args, **kwargs):
@@ -89,12 +81,11 @@ def construct_message(cmd_name, *args, **kwargs):
     :return: a JSON object ready to be sent
     """
 
-    msg = dict({cmd_name: {}})
-    try:
-        msg[cmd_name]["id"] = generic_commands[cmd_name]["id"]
-    except KeyError:
+    if cmd_name not in all_commands:
         print("{} doesn't exist, discard message".format(cmd_name))
         return
+
+    msg = dict({cmd_name: {}})
 
     try:
         msg[cmd_name]["args"] = kwargs["args"]

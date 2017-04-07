@@ -32,28 +32,20 @@ class RobocClient:
             self.name = name
 
         self.cmd_list = {
-            "Bind":
-                {
-                    "id": 1
-                },
             "Refresh":
                 {
-                    "id": 2,
                     "operation": self.refresh
                 },
             "Action":
                 {
-                    "id": 3,
                     "operation": self.action
                 },
             "Intro":
                 {
-                    "id": 4,
                     "operation": self.introduction
                 },
             "Wait":
                 {
-                    "id": 5,
                     "operation": self.wait_other_player_action
                 }
         }

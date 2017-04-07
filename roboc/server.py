@@ -35,26 +35,9 @@ class RobocServer:
         self.MsgHandler = None
         self.wait_action = threading.Event()
         self.cmd_list = {
-            "Bind":
-                {
-                    "id": 1
-                },
-            "Refresh":
-                {
-                    "id": 2
-                },
             "Action":
                 {
-                    "id": 3,
                     "operation": self.process_action,
-                },
-            "Intro":
-                {
-                    "id": 4
-                },
-            "Wait":
-                {
-                    "id": 5
                 }
         }
 
@@ -231,9 +214,7 @@ class RobocServer:
 
         labyrinths = Maps()
         labyrinths.load_map(opj(os.getcwd(), "Maps"))
-
         self.maze = Maze(game_options["S"]["cmd"](labyrinths), list(self.players.keys()))
-        self.cmd_list["Refresh"]["content"] = self.maze.map
 
     def refresh_maps(self):
         """
@@ -243,7 +224,7 @@ class RobocServer:
         msg = construct_message("Refresh", args=self.maze.map)
 
         for player_socket in self.players.values():
-            self.send(msg,player_socket)
+            self.send(msg, player_socket)
 
     def process_action(self, action):
         """
