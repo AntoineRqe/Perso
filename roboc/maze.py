@@ -3,7 +3,7 @@
 from custom_errors import EmptyOptions, InvalidCommands, EncounterObstacle, CoordinateOutOfRange, OverrideRobot
 from pickle import Pickler
 from os import path as op
-from random import randrange
+import random
 from collections import OrderedDict
 
 
@@ -133,7 +133,7 @@ class Maze:
         """
         x, y = (-1, -1)
         while (x, y) == (-1, -1):
-            x, y = randrange(0, self.size[0]), randrange(0, self.size[1])
+            x, y = random.randrange(0, self.size[0]), random.randrange(0, self.size[1])
             if self.map[y][x] != " " and self.map[y][x] != ".":
                 x, y = (-1, -1)
 

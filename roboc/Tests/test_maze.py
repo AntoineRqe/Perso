@@ -2,17 +2,23 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.getcwd(), ".."))
 import unittest
-from maze import Maze
+try:
+    from unittest import mock
+except ImportError:
+    import mock
+
+import time
+from maze import Maze, increment_number
 from custom_errors import CoordinateOutOfRange
 
 test_maps = ["OOOOO",
              "O  UO",
-             "OX  O",
+             "O1  O",
              "OOOOO"]
 
 test_maps_door_W = ["OOOOO",
                     "O  UO",
-                    ".X  O",
+                    ".   O",
                     "OOOOO"]
 
 clean_test_maps = ["OOOOO",
@@ -26,216 +32,213 @@ clean_test_maps_door_W = ["OOOOO",
                           "OOOOO"]
 
 test_maps_1N = ["OOOOO",
-                "OX UO",
+                "O1 UO",
                 "O   O",
                 "OOOOO"]
 
 test_maps_1S = ["OOOOO",
                 "O  UO",
                 "O   O",
-                "OXOOO"]
+                "O1OOO"]
 
 test_maps_1E = ["OOOOO",
                 "O  UO",
-                "O X O",
+                "O 1 O",
                 "OOOOO"]
 
 test_maps_1W = ["OOOOO",
                 "O  UO",
-                "X   O",
+                "1   O",
                 "OOOOO"]
+
+player_name = "Antoine"
 
 
 class MazeTest(unittest.TestCase):
     """Unit test for toolbox"""
 
+    @mock.patch("maze.increment_number", return_value="1")
+    def setUp(self, return_value):
+        self.maze = Maze(clean_test_maps, [player_name])
+        self.maze.update_robot_position(player_name, (1, 2))
+
+    def tearDown(self):
+        self.maze = None
+
     def test_init(self):
         """
         Test init function from Maze
         """
-        test = Maze(test_maps)
-        self.assertEqual(test_maps, test.map)
-        self.assertEqual(clean_test_maps, test.clean_map)
-        self.assertEqual((5, 4), test.size)
-        self.assertEqual((1, 2), test.robot_position)
-        self.assertEqual((3, 1), test.exit_position)
+
+        for line in test_maps:
+            print(line)
+        print()
+        print(self.maze)
+        time.sleep(1)
+
+        self.assertEqual(test_maps, self.maze.map)
+        self.assertEqual(clean_test_maps, self.maze.clean_map)
+        self.assertEqual((5, 4), self.maze.size)
+        self.assertEqual((1, 2), self.maze.robot_position[player_name])
+        self.assertEqual((3, 1), self.maze.exit_position)
 
         with self.assertRaises(TypeError):
-            test = Maze()
+            self.maze = Maze()
 
         with self.assertRaises(TypeError):
-            test = Maze([])
+            self.maze = Maze([])
 
     def test_len(self):
         """
         Test len function from Maze.
         """
-        test = Maze(test_maps)
-        self.assertEqual(test.len(),(5,4))
+        self.assertEqual(self.maze.len(),(5,4))
 
     def test_calculate_coordinate(self):
         """
         Test calculate_coordinate function from Maze.
         """
-        test = Maze(test_maps)
-        self.assertEqual((1, 2), test.robot_position)
-        self.assertEqual(test.calculate_coordinate("N", 1), (1, 1))
-        self.assertEqual(test.calculate_coordinate("E", 2), (3, 2))
-        self.assertEqual(test.calculate_coordinate("S", 1), (1, 3))
+
+        self.assertEqual((1, 2), self.maze.robot_position[player_name])
+        self.assertEqual(self.maze.calculate_coordinate("N", 1), (1, 1))
+        self.assertEqual(self.maze.calculate_coordinate("E", 2), (3, 2))
+        self.assertEqual(self.maze.calculate_coordinate("S", 1), (1, 3))
 
         with self.assertRaises(CoordinateOutOfRange):
-            test.calculate_coordinate("W", 10), (-1, -1)
+            self.maze.calculate_coordinate("W", 10), (-1, -1)
         with self.assertRaises(CoordinateOutOfRange):
-            test.calculate_coordinate("Q", 1), (-1, -1)
+            self.maze.calculate_coordinate("Q", 1), (-1, -1)
         with self.assertRaises(CoordinateOutOfRange):
-            test.calculate_coordinate(900, 10), (-1, -1)
+            self.maze.calculate_coordinate(900, 10), (-1, -1)
         with self.assertRaises(CoordinateOutOfRange):
-            test.calculate_coordinate(0, 0), (-1, -1)
+            self.maze.calculate_coordinate(0, 0), (-1, -1)
         with self.assertRaises(CoordinateOutOfRange):
-            test.calculate_coordinate("", ""), (-1, -1)
+            self.maze.calculate_coordinate("", ""), (-1, -1)
 
     def test_update_robot_position(self):
         """
         Test update_robot_position function
         """
-        test = Maze(test_maps)
 
         # Test North - South
-        test.update_robot_position((1, 1))
-        self.assertEqual(test.map, test_maps_1N)
+        self.maze.update_robot_position(player_name, (1, 1))
+        self.assertEqual(self.maze.map, test_maps_1N)
 
-        test.update_robot_position((1, 2))
-        self.assertEqual(test.map, test_maps)
-
-        test.update_robot_position((1, 3))
-        self.assertEqual(test.map, test_maps_1S)
-
-        test.update_robot_position((1, 2))
-        self.assertEqual(test.map, test_maps)
+        self.maze.update_robot_position(player_name, (1, 2))
+        self.assertEqual(self.maze.map, test_maps)
 
         # Test West - East
-        test.update_robot_position((2, 2))
-        self.assertEqual(test.map, test_maps_1E)
+        self.maze.update_robot_position(player_name, (2, 2))
+        self.assertEqual(self.maze.map, test_maps_1E)
 
-        test.update_robot_position((1, 2))
-        self.assertEqual(test.map, test_maps)
-
-        test.update_robot_position((0, 2))
-        self.assertEqual(test.map, test_maps_1W)
-
-        test.update_robot_position((1, 2))
-        self.assertEqual(test.map, test_maps)
+        self.maze.update_robot_position(player_name, (1, 2))
+        self.assertEqual(self.maze.map, test_maps)
 
         with self.assertRaises(TypeError):
-            test.update_robot_position(("1", "2"))
+            self.maze.update_robot_position(player_name, ("1", "2"))
 
         with self.assertRaises(IndexError):
-            test.update_robot_position((10, 10))
+            self.maze.update_robot_position(player_name, (10, 10))
 
     def test_is_maze_resolved(self):
         """
         Test is_maze_resolved function from Maps.
         """
-        test = Maze(test_maps)
-        self.assertFalse(test.is_maze_resolved())
-        test.update_robot_position((1, 1))
-        self.assertFalse(test.is_maze_resolved())
-        test.update_robot_position((3, 1))
-        self.assertTrue(test.is_maze_resolved())
+        self.assertFalse(self.maze.is_maze_resolved())
+        self.maze.update_robot_position(player_name, (1, 1))
+        self.assertFalse(self.maze.is_maze_resolved())
+        self.maze.update_robot_position(player_name, (3, 1))
+        self.assertTrue(self.maze.is_maze_resolved())
 
     def test_is_itinerary_clear(self):
         """
         Test is_itinerary_clear function
         """
-        test = Maze(test_maps)
-        self.assertTrue(test.is_itinerary_clear("N",1))
-        self.assertFalse(test.is_itinerary_clear("S", 1))
-        self.assertTrue(test.is_itinerary_clear("E", 1))
-        self.assertFalse(test.is_itinerary_clear("W", 1))
-        self.assertFalse(test.is_itinerary_clear("E", 10))
-        self.assertFalse(test.is_itinerary_clear("S", 2))
-        self.assertFalse(test.is_itinerary_clear("", 2))
-        self.assertFalse(test.is_itinerary_clear(10, "2"))
-        self.assertFalse(test.is_itinerary_clear("EAS", "1"))
-        self.assertFalse(test.is_itinerary_clear("NAZ", -1))
-        self.assertFalse(test.is_itinerary_clear("N", 2))
-        self.assertFalse(test.is_itinerary_clear("E", 3))
+        self.assertTrue(self.maze.is_itinerary_clear("N1"))
+        self.assertFalse(self.maze.is_itinerary_clear("S1"))
+        self.assertTrue(self.maze.is_itinerary_clear("E1"))
+        self.assertFalse(self.maze.is_itinerary_clear("W1"))
+        self.assertFalse(self.maze.is_itinerary_clear("E10"))
+        self.assertFalse(self.maze.is_itinerary_clear("S2"))
+        self.assertFalse(self.maze.is_itinerary_clear("2"))
+        self.assertFalse(self.maze.is_itinerary_clear("N2"))
+        self.assertFalse(self.maze.is_itinerary_clear("E3"))
 
     def test_is_command_valid(self):
-        test = Maze(test_maps)
 
-        self.assertFalse(test.is_command_valid(""))
-        self.assertFalse(test.is_command_valid("A"))
-        self.assertFalse(test.is_command_valid("9"))
+        self.assertFalse(self.maze.is_command_valid(""))
+        self.assertFalse(self.maze.is_command_valid("A"))
+        self.assertFalse(self.maze.is_command_valid("9"))
 
-        self.assertTrue(test.is_command_valid("N"))
-        self.assertFalse(test.is_command_valid("NN"))
-        self.assertFalse(test.is_command_valid("N/"))
-        self.assertFalse(test.is_command_valid("N-10"))
-        self.assertTrue(test.is_command_valid("N8"))
-        self.assertTrue(test.is_command_valid("S1"))
-        self.assertTrue(test.is_command_valid("W2"))
-        self.assertTrue(test.is_command_valid("E8"))
+        self.assertTrue(self.maze.is_command_valid("N"))
+        self.assertFalse(self.maze.is_command_valid("NN"))
+        self.assertFalse(self.maze.is_command_valid("N/"))
+        self.assertFalse(self.maze.is_command_valid("N-10"))
+        self.assertFalse(self.maze.is_command_valid("S1"))
+        self.assertFalse(self.maze.is_command_valid("W2"))
+        self.assertFalse(self.maze.is_command_valid("E8"))
 
-        self.assertTrue(test.is_command_valid("Q"))
-        self.assertFalse(test.is_command_valid("Q1"))
+        self.assertTrue(self.maze.is_command_valid("Q"))
+        self.assertFalse(self.maze.is_command_valid("Q1"))
 
-        self.assertFalse(test.is_command_valid("M"))
-        self.assertFalse(test.is_command_valid("MM"))
-        self.assertFalse(test.is_command_valid("M9"))
-        self.assertFalse(test.is_command_valid("M."))
-        self.assertTrue(test.is_command_valid("MN"))
+        self.assertFalse(self.maze.is_command_valid("M"))
+        self.assertFalse(self.maze.is_command_valid("MM"))
+        self.assertFalse(self.maze.is_command_valid("M9"))
+        self.assertFalse(self.maze.is_command_valid("M."))
+        self.assertTrue(self.maze.is_command_valid("MN"))
 
-    def test_move(self):
-        test = Maze(test_maps)
-
-        test.move("N1")
-        self.assertEqual(test.map, test_maps_1N)
-        test.move("S1")
-        self.assertEqual(test.map, test_maps)
-
-        test.move("S1")
-        self.assertEqual(test.map, test_maps)
-        test.move("N")
-        self.assertEqual(test.map, test_maps_1N)
-        test.move("S1")
-        self.assertEqual(test.map, test_maps)
-
-        test.move("E1")
-        self.assertEqual(test.map, test_maps_1E)
-        test.move("W1")
-        self.assertEqual(test.map, test_maps)
-
-        test.move("W")
-        self.assertEqual(test.map, test_maps)
-        test.move("E1")
-        self.assertEqual(test.map, test_maps_1E)
-        test.move("W1")
-        self.assertEqual(test.map, test_maps)
-
-    def test_put_wall(self):
-        test = Maze(test_maps)
-
-        test.put_door("PW")
-        self.assertEqual(test.clean_map, clean_test_maps_door_W)
-
-        test.put_wall("MW")
-        self.assertEqual(test.clean_map, clean_test_maps)
-
-    def test_init_robot_position(self):
-        test = Maze(test_maps)
-        for i in range(0, 100):
-            self.assertGreater(test.size[0], test.init_robot_position()[0])
-            self.assertLessEqual(0, test.init_robot_position()[0])
-            self.assertGreater(test.size[1], test.init_robot_position()[1])
-            self.assertLessEqual(0, test.init_robot_position()[1])
-
-    @staticmethod
-    def test_save():
-        """
-        Test  save function
-        """
-        pass
+    # def test_move(self):
+    #     self.maze.move("N1")
+    #     self.assertEqual(self.maze.map, test_maps_1N)
+    #     self.maze.move("S1")
+    #     self.assertEqual(self.maze.map, test_maps)
+    #
+    #     self.maze.move("S1")
+    #     self.assertEqual(self.maze.map, test_maps)
+    #     self.maze.move("N")
+    #     self.assertEqual(self.maze.map, test_maps_1N)
+    #     self.maze.move("S1")
+    #     self.assertEqual(self.maze.map, test_maps)
+    #
+    #     self.maze.move("E1")
+    #     self.assertEqual(self.maze.map, test_maps_1E)
+    #     self.maze.move("W1")
+    #     self.assertEqual(self.maze.map, test_maps)
+    #
+    #     self.maze.move("W")
+    #     self.assertEqual(self.maze.map, test_maps)
+    #     self.maze.move("E1")
+    #     self.assertEqual(self.maze.map, test_maps_1E)
+    #     self.maze.move("W1")
+    #     self.assertEqual(self.maze.map, test_maps)
+    #
+    # def test_put_wall(self):
+    #     self.maze.put_door("PW")
+    #     self.assertEqual(self.maze.clean_map, clean_test_maps_door_W)
+    #
+    #     self.maze.put_wall("MW")
+    #     self.assertEqual(self.maze.clean_map, clean_test_maps)
+    #
+    # def test_init_robot_position(self):
+    #     for i in range(0, 100):
+    #         self.assertGreater(self.maze.size[0], self.maze.init_robot_position()[0])
+    #         self.assertLessEqual(0, self.maze.init_robot_position()[0])
+    #         self.assertGreater(self.maze.size[1], self.maze.init_robot_position()[1])
+    #         self.assertLessEqual(0, self.maze.init_robot_position()[1])
+    #
+    # @staticmethod
+    # def test_save():
+    #     """
+    #     Test  save function
+    #     """
+    #     pass
+    #
+    # def test_init_robot_position(self, return_value):
+    #     """
+    #     Test the init robot position
+    #     """
+    #     result = self.maze.init_robot_position()
+    #     self.assertEqual((1, 1), result)
 
 if __name__ == "__main__":
     unittest.main()
