@@ -14,8 +14,7 @@ def init(tries=5):
     """
 
     players = list()
-    players.append("Antoine")
-    players.append("Remi")
+
     print(players)
 
     if tries == 0:
@@ -28,23 +27,22 @@ def init(tries=5):
 
     print_init_usage(game_options)
 
-    # try:
-    #     options = str(input("So how do you want to start?\r\n")).upper()
-    #     if options.isdigit():
-    #         raise NumericalOptions(options)
-    #     if not options:
-    #         raise EmptyOptions(options)
-    #     if len(options) > 1:
-    #         raise OverSizedOptions(options)
-    #     if options not in game_options.keys():
-    #         raise WrongOptions(options)
-    #
-    # except Exception as e:
-    #     print(e)
-    #     print_init_usage(game_options)
-    #     return init(tries=tries - 1)
+    try:
+        options = str(input("So how do you want to start?\r\n")).upper()
+        if options.isdigit():
+            raise NumericalOptions(options)
+        if not options:
+            raise EmptyOptions(options)
+        if len(options) > 1:
+            raise OverSizedOptions(options)
+        if options not in game_options.keys():
+            raise WrongOptions(options)
 
-    options = "S"
+    except Exception as e:
+        print(e)
+        print_init_usage(game_options)
+        return init(tries=tries - 1)
+
     if options == "S":
         print("Test : {}".format(players))
         return Maze(game_options[options]["cmd"](labyrinths), players)

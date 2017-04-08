@@ -39,17 +39,6 @@ def find_exit(maze):
             return str(map_line).index('U'), y
 
 
-def find_entrance(maze):
-    """
-    Find 'X' in a list of string
-    :param maze: the list of string to parse
-    :return: a tuple with the coordinate of the entrance
-    """
-    for y, map_line in enumerate(maze):
-        if 'X' in map_line:
-            return str(map_line).index('X'), y
-
-
 class Maze:
 
     def __init__(self, map_drawing=[], players=[]):

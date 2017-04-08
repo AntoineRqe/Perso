@@ -22,15 +22,15 @@ def start_game(labyrinths, players=[],  *args, **kwargs):
     for index, name in enumerate(labyrinths.names):
         print("\t {} - {}".format(index, name))
 
-    # try:
-    #     your_choice = int(input("What map do you want?\r\n"))
-    # except ValueError:
-    #     your_choice = ""
-    #     pass
-    #
-    # while type(your_choice) != int or your_choice < 0 or your_choice >= len(labyrinths.names):
-    #     your_choice = int(input("What map do you want?\r\n"))
-    your_choice = 0
+    try:
+        your_choice = int(input("What map do you want?\r\n"))
+    except ValueError:
+        your_choice = ""
+        pass
+
+    while type(your_choice) != int or your_choice < 0 or your_choice >= len(labyrinths.names):
+        your_choice = int(input("What map do you want?\r\n"))
+
     return labyrinths.drawings[labyrinths.names[your_choice]]
 
 
