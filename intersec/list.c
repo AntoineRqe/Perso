@@ -45,6 +45,15 @@ void print_list(Element* start){
     }
 }
 
+void liberate(List * list){
+    while(list->head != NULL){
+        Element *tmp = list->head;
+        list->head = list->head->next;
+        free(tmp);
+        liberate(list);
+    }
+}
+
 void test_chained_list(void){
     List* top = initialisation();
     if(top->head == NULL || strcmp(top->head->word,"") || top->head->next != NULL){
@@ -63,5 +72,10 @@ void test_chained_list(void){
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
 
-    print_list(top->head);
+    liberate(top);
+    if(count(top->head) != 0){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
 }

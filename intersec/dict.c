@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "list.h"
 #include "dict.h"
 
 char* test_sentences[] = {
@@ -46,6 +47,58 @@ unsigned int count_words_in_string(char* sentence, const char delimiter){
     }
     //printf("There are %d words in sentence '%s'\n", words_counter, sentence);
     return words_counter;
+}
+
+/* Read the file of the dictionnary, put name in list and return number of value; */
+unsigned int parse_dict(char* dict_name, List* word_list){
+    FILE* fd = NULL;
+    char line[256] = "";
+    unsigned int read = 0;
+
+    fd = fopen(dict_name, "r");
+
+    if(fd == NULL){
+        printf("Error opening the dictionnary, Bye!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while(fgets(line,sizeof(line), fd)){
+        unsigned int i = 0;
+        read = strlen(line);
+
+        if( read <= 1){
+            continue;
+        }
+
+        for(i = 0; i < read; i++){
+            if(!(('A' <= line[i] && line[i] <= 'Z') ||
+                ('a' <= line[i] && line[i] <= 'z'))){
+                    break;
+            }
+        }
+        if (i == (strlen(line) - 1)){
+            //printf("Received line '%s', len[%d]\n", line, strlen(line));
+            insert(word_list, line);
+        }
+    }
+
+    fclose(fd);
+    return count(word_list->head) - 1;
+}
+
+void test_parse_dict(void){
+    List* test_list = initialisation();
+    unsigned int word_nb = 0;
+
+    word_nb = parse_dict("test_dict1.txt", test_list);
+
+    if(word_nb != 3){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
+
+    liberate(test_list);
 }
 
 void test_count_words_in_string(void){

@@ -13,4 +13,5 @@ int main(void){
 void all_tests(void){
     test_count_words_in_string();
     test_chained_list();
+    test_parse_dict();
 }
