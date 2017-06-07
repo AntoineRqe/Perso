@@ -17,3 +17,4 @@ void insert(List* list, char* word_to_add);
 int count(Element* start);
 void print_list(Element* start);
 void test_chained_list(void);
+

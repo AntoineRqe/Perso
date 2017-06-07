@@ -1,7 +1,7 @@
 all: main
 
 main: main.o list.o dict.o
-		gcc -o main list.o main.o
+		gcc -o main list.o dict.o main.o
 
 list.o: list.c
 		gcc -o list.o -c list.c -W -Wall -Werror

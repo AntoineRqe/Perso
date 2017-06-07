@@ -1,7 +1,7 @@
-#include "list.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "list.h"
 
 /* Functions and structures related to chained list */
 
