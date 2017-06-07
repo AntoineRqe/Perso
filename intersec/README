@@ -1,2 +1,3 @@
 Known limitation :
-    - Maximum size of dictionnary parsing : 256 octets.
+    - Maximum size of dictionnary parsing : 50 octets.
+    - Un mot ne contient que les lettres de l'alpabet [a-zA-Z]

@@ -1,19 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "list.h"
 #include "dict.h"
-
-char* test_sentences[] = {
-    "je m appelle antoine",     // 4 words
-    "Je m appelle Antoine.",    // 4 words
-    " ",                        // 0 word
-    " Antoine ",                // 1 word
-    "",                         // 0 word
-    "jemappelleantoine",        // 1 word
-    "a",                        // 1 word
-    NULL                        // 0 word
-};
 
 /* Return the number of words in a given sentence
  * and store them in a given chained list*/
@@ -52,7 +42,7 @@ unsigned int count_words_in_string(char* sentence, const char delimiter){
 /* Read the file of the dictionnary, put name in list and return number of value; */
 unsigned int parse_dict(char* dict_name, List* word_list){
     FILE* fd = NULL;
-    char line[256] = "";
+    char line[MAX_WORD_SIZE] = "";
     unsigned int read = 0;
 
     fd = fopen(dict_name, "r");
@@ -84,6 +74,20 @@ unsigned int parse_dict(char* dict_name, List* word_list){
     fclose(fd);
     return count(word_list->head) - 1;
 }
+
+/* --------------------------------------------------------------------------------
+ *                                      Tests
+ * ------------------------------------------------------------------------------ */
+char* test_sentences[] = {
+    "je m appelle antoine",     // 4 words
+    "Je m appelle Antoine.",    // 4 words
+    " ",                        // 0 word
+    " Antoine ",                // 1 word
+    "",                         // 0 word
+    "jemappelleantoine",        // 1 word
+    "a",                        // 1 word
+    NULL                        // 0 word
+};
 
 void test_parse_dict(void){
     List* test_list = initialisation();

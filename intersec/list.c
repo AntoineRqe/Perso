@@ -48,6 +48,23 @@ void print_list(Element* start){
     }
 }
 
+int is_string_in_list(List* start, char* word_searched){
+    if(word_searched != NULL){
+        return 0;
+    }
+
+    Element *tmp = start->head;
+
+    while(tmp != NULL){
+        if(!strncmp(tmp->word, word_searched, strlen(word_searched))){
+            return 1;
+        }
+        tmp = tmp->next;
+    }
+
+    return 0;
+}
+
 void liberate(List * list){
     while(list->head != NULL){
         Element *tmp = list->head;
@@ -57,6 +74,11 @@ void liberate(List * list){
         liberate(list);
     }
 }
+
+
+/* --------------------------------------------------------------------------------
+ *                                      Tests
+ * ------------------------------------------------------------------------------ */
 
 void test_chained_list(void){
     List* top = initialisation();
