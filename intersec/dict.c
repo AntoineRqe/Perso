@@ -77,7 +77,6 @@ unsigned int parse_dict(char* dict_name, List* word_list){
             }
         }
         if (i == (strlen(line) - 1)){
-            //printf("Received line '%s', len[%d]\n", line, strlen(line));
             insert(word_list, line);
         }
     }
@@ -97,8 +96,8 @@ void test_parse_dict(void){
     } else {
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
-
-    liberate(test_list);
+    print_list(test_list->head);
+    //liberate(test_list);
 }
 
 void test_count_words_in_string(void){

@@ -26,7 +26,10 @@ void insert(List* list, char* word_to_add){
         exit(EXIT_FAILURE);
     }
 
-    new->word = word_to_add;
+    char* new_word = (char*)malloc(sizeof(char) * strlen(word_to_add));
+    snprintf(new_word, strlen(word_to_add), word_to_add);
+
+    new->word = new_word;
     new->next = list->head;
     list->head = new;
 }
@@ -49,6 +52,7 @@ void liberate(List * list){
     while(list->head != NULL){
         Element *tmp = list->head;
         list->head = list->head->next;
+        free(tmp->word);
         free(tmp);
         liberate(list);
     }
