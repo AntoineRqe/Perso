@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "list.h"
 
 void all_tests(void);
 
-/* Return the number of words in a given sentence */
+/* Return the number of words in a given sentence
+ * and store them in a given chained list*/
 unsigned int count_words_in_string(char* sentence, const char delimiter){
     unsigned int words_counter = 0;
     char* current_ptr = sentence;
@@ -40,73 +42,73 @@ unsigned int count_words_in_string(char* sentence, const char delimiter){
 
 
 int main(void){
-	all_tests();
-	return 0;
+    all_tests();
+    return 0;
 }
 
 /* All code related to testing */
 
-char* sentences[100] = {
-	"je m appelle antoine",		// 4 words
-	"Je m appelle Antoine.",	// 4 words
-	" ",						// 0 word
-	" Antoine ",				// 1 word
-	"",							// 0 word
-	"jemappelleantoine",		// 1 word
+char* sentences[] = {
+    "je m appelle antoine",     // 4 words
+    "Je m appelle Antoine.",    // 4 words
+    " ",                        // 0 word
+    " Antoine ",                // 1 word
+    "",                         // 0 word
+    "jemappelleantoine",        // 1 word
     "a",                        // 1 word
     NULL                        // 0 word
 };
 
 void test_count_words_in_string(void){
-	unsigned int test_counter = 0;
-	test_counter = count_words_in_string(sentences[0], ' ');
-	if(test_counter != 4){
-		printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
-	} else {
-		printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
-	}
+    unsigned int test_counter = 0;
+    test_counter = count_words_in_string(sentences[0], ' ');
+    if(test_counter != 4){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
 
-	test_counter = count_words_in_string(sentences[1], ' ');
-	if(test_counter != 4){
-		printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
-	} else {
-		printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
-	}
+    test_counter = count_words_in_string(sentences[1], ' ');
+    if(test_counter != 4){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
 
-	test_counter = count_words_in_string(sentences[2], ' ');
-	if(test_counter != 0){
-		printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
-	} else {
-		printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
-	}
+    test_counter = count_words_in_string(sentences[2], ' ');
+    if(test_counter != 0){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
 
     test_counter = count_words_in_string(sentences[3], ' ');
-	if(test_counter != 1){
-		printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
-	} else {
-		printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
-	}
+    if(test_counter != 1){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
 
     test_counter = count_words_in_string(sentences[4], ' ');
-	if(test_counter != 0){
-		printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
-	} else {
-		printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
-	}
+    if(test_counter != 0){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
 
     test_counter = count_words_in_string(sentences[5], ' ');
-	if(test_counter != 1){
-		printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
-	} else {
-		printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
-	}
+    if(test_counter != 1){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
 
     test_counter = count_words_in_string(sentences[6], ' ');
-	if(test_counter != 1){
-		printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
-	} else {
-		printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
-	}
+    if(test_counter != 1){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
 
     test_counter = count_words_in_string(sentences[7], ' ');
     if(test_counter != 0){
@@ -117,5 +119,6 @@ void test_count_words_in_string(void){
 }
 
 void all_tests(void){
-	test_count_words_in_string();
+    test_count_words_in_string();
+    test_chained_list();
 }
