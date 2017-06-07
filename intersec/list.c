@@ -27,7 +27,7 @@ void insert(List* list, char* word_to_add){
     }
 
     char* new_word = (char*)malloc(sizeof(char) * strlen(word_to_add));
-    snprintf(new_word, strlen(word_to_add), word_to_add);
+    snprintf(new_word, strlen(new_word), word_to_add);
 
     new->word = new_word;
     new->next = list->head;

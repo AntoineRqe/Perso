@@ -1,0 +1,2 @@
+Known limitation :
+    - Maximum size of dictionnary parsing : 256 octets.
