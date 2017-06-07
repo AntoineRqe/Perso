@@ -19,22 +19,22 @@ List *initialisation(void){
     return list;
 }
 
-void insert(List* list, char* word_to_add){
+void insert(List* list, char* word_to_add, int size){
     Element *new = (Element*)malloc(sizeof(Element));
 
     if(list == NULL || new == NULL){
         exit(EXIT_FAILURE);
     }
-
-    char* new_word = (char*)malloc(sizeof(char) * strlen(word_to_add));
-    snprintf(new_word, strlen(new_word), word_to_add);
+    //printf("[Debug] Insert word %s of size %d\n", word_to_add, size);
+    char* new_word = (char*)malloc(sizeof(char) * size);
+    snprintf(new_word, size, word_to_add);
 
     new->word = new_word;
     new->next = list->head;
     list->head = new;
 }
 
-int count(Element* start){
+unsigned int count(Element* start){
     if (start == NULL){
         return 0;
     }
@@ -88,9 +88,9 @@ void test_chained_list(void){
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
 
-    insert(top, "coucou!");
-    insert(top, "bonjour!");
-    insert(top, "aurevoir!");
+    insert(top, "coucou!", strlen("coucou!"));
+    insert(top, "bonjour!", strlen("bonjour!"));
+    insert(top, "aurevoir!", strlen("aurevoir!"));
 
     if(count(top->head) != 4){
         printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);

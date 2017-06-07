@@ -7,35 +7,62 @@
 
 /* Return the number of words in a given sentence
  * and store them in a given chained list*/
-unsigned int count_words_in_string(char* sentence, const char delimiter){
+
+static void send_word_to_list(char* word, int size, List *list){
+	char* word_in_text = (char*)malloc(sizeof(char) * (size + 1));
+	snprintf(word_in_text, size, word);
+	insert(list, word_in_text, size);
+	free(word_in_text);
+}
+
+unsigned int count_words_in_string(char* sentence, const char delimiter, List *list){
     unsigned int words_counter = 0;
     char* current_ptr = sentence;
     char* old_ptr = sentence;
-
-    if(current_ptr == NULL){
+    unsigned int word_size = 0;
+	
+    if(current_ptr == NULL || strlen(sentence) == 0){
         return 0;
     }
 
     char* end_ptr = sentence + strlen(sentence);
-    if ((end_ptr - current_ptr) == 1 && *current_ptr != delimiter) {
-        return 1;
+    if (strlen(sentence) <= 1 && *current_ptr != delimiter &&
+    (('A' <= *current_ptr && *current_ptr <= 'Z') || ('a' <= *current_ptr && *current_ptr <= 'z'))) {
+		send_word_to_list(current_ptr, 2, list);
+		return 1;
     }
 
     while((current_ptr = strchr(current_ptr, delimiter)) != NULL){
         if((current_ptr-old_ptr) <= 1){ //Two consecutive delimiter
-            old_ptr = current_ptr;
             current_ptr++;
+            old_ptr = current_ptr;
             continue;
         }
+        if(!strncmp(old_ptr, " ", 1)){
+			old_ptr++;
+		}
+
+        word_size = current_ptr - old_ptr + 1;
+
+        if(word_size >= MAX_WORD_SIZE){
+            continue;
+        }
+        send_word_to_list(old_ptr, word_size, list);
+
         words_counter++;
         old_ptr = current_ptr;
         current_ptr++;
     }
 
-    if((end_ptr-old_ptr) > 1){
+    word_size = end_ptr - old_ptr + 1;
+    if(word_size > 2 && word_size < MAX_WORD_SIZE){
+        if(!strncmp(old_ptr, " ", 1)){
+			old_ptr++;
+		}
+		
+		send_word_to_list(old_ptr, word_size, list);
         words_counter++;
     }
-    //printf("There are %d words in sentence '%s'\n", words_counter, sentence);
     return words_counter;
 }
 
@@ -67,7 +94,7 @@ unsigned int parse_dict(char* dict_name, List* word_list){
             }
         }
         if (i == (strlen(line) - 1)){
-            insert(word_list, line);
+            insert(word_list, line, strlen(line));
         }
     }
 
@@ -86,6 +113,7 @@ char* test_sentences[] = {
     "",                         // 0 word
     "jemappelleantoine",        // 1 word
     "a",                        // 1 word
+    "! an be",                  // 2 words
     NULL                        // 0 word
 };
 
@@ -106,59 +134,86 @@ void test_parse_dict(void){
 
 void test_count_words_in_string(void){
     unsigned int test_counter = 0;
-    test_counter = count_words_in_string(test_sentences[0], ' ');
+    unsigned int total_counter = 0;
+    List* test_list = initialisation();
+
+    test_counter = count_words_in_string(test_sentences[0], ' ', test_list);
     if(test_counter != 4){
         printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
     } else {
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
+    total_counter += test_counter;
 
-    test_counter = count_words_in_string(test_sentences[1], ' ');
+    test_counter = count_words_in_string(test_sentences[1], ' ', test_list);
     if(test_counter != 4){
         printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
     } else {
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
+    total_counter += test_counter;
 
-    test_counter = count_words_in_string(test_sentences[2], ' ');
+    test_counter = count_words_in_string(test_sentences[2], ' ', test_list);
     if(test_counter != 0){
         printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
     } else {
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
+    total_counter += test_counter;
 
-    test_counter = count_words_in_string(test_sentences[3], ' ');
+    test_counter = count_words_in_string(test_sentences[3], ' ', test_list);
     if(test_counter != 1){
         printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
     } else {
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
+    total_counter += test_counter;
 
-    test_counter = count_words_in_string(test_sentences[4], ' ');
+    test_counter = count_words_in_string(test_sentences[4], ' ', test_list);
     if(test_counter != 0){
         printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
     } else {
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
+    total_counter += test_counter;
 
-    test_counter = count_words_in_string(test_sentences[5], ' ');
+    test_counter = count_words_in_string(test_sentences[5], ' ', test_list);
     if(test_counter != 1){
         printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
     } else {
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
+    total_counter += test_counter;
 
-    test_counter = count_words_in_string(test_sentences[6], ' ');
+    test_counter = count_words_in_string(test_sentences[6], ' ', test_list);
     if(test_counter != 1){
         printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
     } else {
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
+    total_counter += test_counter;
 
-    test_counter = count_words_in_string(test_sentences[7], ' ');
+    test_counter = count_words_in_string(test_sentences[7], ' ', test_list);
+    if(test_counter != 2){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
+    total_counter += test_counter;
+
+    test_counter = count_words_in_string(test_sentences[8], ' ', test_list);
     if(test_counter != 0){
         printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
     } else {
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
+    
+    total_counter += test_counter;
+
+    if(total_counter != (count(test_list->head) - 1)){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
+    print_list(test_list->head);
 }
