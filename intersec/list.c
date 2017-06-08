@@ -96,6 +96,7 @@ void compare_list(Element* dict_list, Element* text_list){
 		}
 		dict_list = dict_list->next;
 	}
+	printf("\n");
 }
 
 

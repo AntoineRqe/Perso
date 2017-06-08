@@ -24,7 +24,7 @@ int main(int argc, char **argv){
     }
 
     nb_dict_word = parse_dict(argv[1], dict_list);
-    printf("There are %d words in the dictionnary %s\n", nb_dict_word, argv[1]);
+    printf("There are %d words in the dictionnary %s\n\n", nb_dict_word, argv[1]);
 
     if(argc >= 3){
         for(i = 2; i < argc; i++){
