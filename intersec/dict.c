@@ -35,7 +35,7 @@ unsigned int count_words_in_string(char* sentence, const char delimiter, List *l
     }
 
     while((current_ptr = strchr(current_ptr, delimiter)) != NULL){
-        if((current_ptr-old_ptr) <= 1){ //Two consecutive delimiter
+        if((current_ptr-old_ptr) <= 1){
             current_ptr++;
             old_ptr = current_ptr;
             continue;
@@ -76,11 +76,12 @@ unsigned int parse_text(char* text_name, List* word_list){
 
     fd = fopen(text_name, "r");
     if(fd == NULL){
-        printf("Error opening the dictionnary, Bye!\n");
+        printf("Error opening the text %s, Bye!\n", text_name);
         exit(EXIT_FAILURE);
     }
 
     while(fgets(line, sizeof(line), fd)){
+        //printf("[debug %s %d] scanning line '%s'", __FUNCTION__, __LINE__, line);
         total_counter += count_words_in_string(line, ' ', word_list);
     }
     return total_counter;
@@ -96,7 +97,7 @@ unsigned int parse_dict(char* dict_name, List* word_list){
     fd = fopen(dict_name, "r");
 
     if(fd == NULL){
-        printf("Error opening the dictionnary, Bye!\n");
+        printf("Error opening the dictionnary %s Bye!\n", dict_name);
         exit(EXIT_FAILURE);
     }
 
@@ -104,7 +105,7 @@ unsigned int parse_dict(char* dict_name, List* word_list){
         unsigned int i = 0;
         read = strlen(line);
 
-        if( read < 1){//peut etre read <= 1
+        if( read <= 1){
             continue;
         }
 
@@ -135,6 +136,7 @@ char* test_sentences[] = {
     "jemappelleantoine",        // 1 word
     "a",                        // 1 word
     "! an be",                  // 2 words
+    "this reaction focused as much on the development of new formal structures and syntheses as", //15 words
     NULL                        // 0 word
 };
 
@@ -223,12 +225,19 @@ void test_count_words_in_string(void){
     total_counter += test_counter;
 
     test_counter = count_words_in_string(test_sentences[8], ' ', test_list);
+    if(test_counter != 15){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
+    total_counter += test_counter;
+
+    test_counter = count_words_in_string(test_sentences[9], ' ', test_list);
     if(test_counter != 0){
         printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
     } else {
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
-
     total_counter += test_counter;
 
     if(total_counter != (count(test_list->head) - 1)){

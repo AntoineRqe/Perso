@@ -1,3 +1,6 @@
 Known limitation :
     - Maximum size of dictionnary parsing : 50 octets.
+    - Maximum size of linex in text file  : 500 octets.
     - Un mot ne contient que les lettres de l'alpabet [a-zA-Z]
+    - Pas de distinction entre minuscule et majuscule.
+    - Pas de ponctuation géré.

@@ -25,7 +25,7 @@ void insert(List* list, char* word_to_add, int size){
     if(list == NULL || new == NULL){
         exit(EXIT_FAILURE);
     }
-    //printf("[Debug] Insert word %s of size %d\n", word_to_add, size);
+
     char* new_word = (char*)malloc(sizeof(char) * size);
     snprintf(new_word, size, word_to_add);
 
@@ -52,7 +52,7 @@ void print_list(Element* node){
 Element* search_word(Element *node, char* word){
     Element* tmp = node;
     while(tmp != NULL){
-        if(!strncmp(tmp->word, word, strlen(word))){
+        if(!strncmp(tmp->word, word, strlen(word)+1)){
             return tmp;
         }
         tmp = tmp->next;
@@ -86,8 +86,14 @@ void liberate(List * list){
 void compare_list(Element* dict_list, Element* text_list){
 	int occurence = 0;
 	while(dict_list != NULL){
+		if(strlen(dict_list->word) == 0){
+			dict_list = dict_list->next;
+			continue;
+		}
 		occurence = word_occurences(text_list, dict_list->word);
-		printf("[%s] -> %d\n", dict_list->word, occurence);
+		if(occurence > 0){
+			printf("[%s] -> %d\n", dict_list->word, occurence);
+		}
 		dict_list = dict_list->next;
 	}
 }
@@ -141,6 +147,7 @@ void test_chained_list(void){
     } else {
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
+
     liberate(top);
     if(count(top->head) != 0){
         printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
