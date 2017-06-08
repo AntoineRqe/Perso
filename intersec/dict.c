@@ -15,6 +15,8 @@ static void send_word_to_list(char* word, int size, List *list){
     free(word_in_text);
 }
 
+/* Count the number of word in a given sentence, word splitted with a delimiter
+ * and all words stored in a list. Function returns the number if words. */
 unsigned int count_words_in_string(char* sentence, const char delimiter, List *list){
     unsigned int words_counter = 0;
     char* current_ptr = sentence;

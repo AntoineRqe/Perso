@@ -83,6 +83,15 @@ void liberate(List * list){
     }
 }
 
+void compare_list(Element* dict_list, Element* text_list){
+	int occurence = 0;
+	while(dict_list != NULL){
+		occurence = word_occurences(text_list, dict_list->word);
+		printf("[%s] -> %d\n", dict_list->word, occurence);
+		dict_list = dict_list->next;
+	}
+}
+
 
 /* --------------------------------------------------------------------------------
  *                                      Tests
