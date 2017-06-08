@@ -41,28 +41,36 @@ unsigned int count(Element* start){
     return 1 + count(start->next);
 }
 
-void print_list(Element* start){
-    if(start != NULL){
-        printf("'%s' -> ", start->word);
-        print_list(start->next);
+void print_list(Element* node){
+    while(node != NULL){
+        printf("'%s' -> ", node->word);
+        node = node->next;
     }
+    printf("NULL\n");
 }
 
-int is_string_in_list(List* start, char* word_searched){
-    if(word_searched != NULL){
-        return 0;
-    }
-
-    Element *tmp = start->head;
-
+Element* search_word(Element *node, char* word){
+    Element* tmp = node;
     while(tmp != NULL){
-        if(!strncmp(tmp->word, word_searched, strlen(word_searched))){
-            return 1;
+        if(!strncmp(tmp->word, word, strlen(word))){
+            return tmp;
         }
         tmp = tmp->next;
     }
+    return NULL;
+}
 
-    return 0;
+int word_occurences(Element* node, char* word){
+    int counter = 0;
+    if(word == NULL || node == NULL){
+        return 0;
+    }
+
+    while((node = search_word(node, word)) != NULL){
+        node = node->next;
+        counter++;
+    }
+    return counter;
 }
 
 void liberate(List * list){
@@ -88,16 +96,42 @@ void test_chained_list(void){
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
 
-    insert(top, "coucou!", strlen("coucou!"));
-    insert(top, "bonjour!", strlen("bonjour!"));
-    insert(top, "aurevoir!", strlen("aurevoir!"));
+    insert(top, "coucou!", strlen("coucou!")+1);
+    insert(top, "coucou!", strlen("coucou!")+1);
+    insert(top, "coucou!", strlen("coucou!")+1);
+    insert(top, "coucou!", strlen("coucou!")+1);
+    insert(top, "bonjour!", strlen("bonjour!")+1);
+    insert(top, "aurevoir!", strlen("aurevoir!")+1);
 
-    if(count(top->head) != 4){
+    if(count(top->head) != 7){
         printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
     } else {
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
 
+    if (word_occurences(top->head, "coucou!") != 4){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
+
+    if (word_occurences(top->head, "bonjour!") != 1){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
+
+    if (word_occurences(top->head, "aurevoir!") != 1){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
+
+    if (word_occurences(top->head, "couc!") != 0){
+        printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);
+    } else {
+        printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
+    }
     liberate(top);
     if(count(top->head) != 0){
         printf("[%s][%d] KO\n", __FUNCTION__, __LINE__);

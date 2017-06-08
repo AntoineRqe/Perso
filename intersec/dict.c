@@ -9,10 +9,10 @@
  * and store them in a given chained list*/
 
 static void send_word_to_list(char* word, int size, List *list){
-	char* word_in_text = (char*)malloc(sizeof(char) * (size + 1));
-	snprintf(word_in_text, size, word);
-	insert(list, word_in_text, size);
-	free(word_in_text);
+    char* word_in_text = (char*)malloc(sizeof(char) * (size + 1));
+    snprintf(word_in_text, size, word);
+    insert(list, word_in_text, size);
+    free(word_in_text);
 }
 
 unsigned int count_words_in_string(char* sentence, const char delimiter, List *list){
@@ -20,7 +20,7 @@ unsigned int count_words_in_string(char* sentence, const char delimiter, List *l
     char* current_ptr = sentence;
     char* old_ptr = sentence;
     unsigned int word_size = 0;
-	
+
     if(current_ptr == NULL || strlen(sentence) == 0){
         return 0;
     }
@@ -28,8 +28,8 @@ unsigned int count_words_in_string(char* sentence, const char delimiter, List *l
     char* end_ptr = sentence + strlen(sentence);
     if (strlen(sentence) <= 1 && *current_ptr != delimiter &&
     (('A' <= *current_ptr && *current_ptr <= 'Z') || ('a' <= *current_ptr && *current_ptr <= 'z'))) {
-		send_word_to_list(current_ptr, 2, list);
-		return 1;
+        send_word_to_list(current_ptr, 2, list);
+        return 1;
     }
 
     while((current_ptr = strchr(current_ptr, delimiter)) != NULL){
@@ -39,8 +39,8 @@ unsigned int count_words_in_string(char* sentence, const char delimiter, List *l
             continue;
         }
         if(!strncmp(old_ptr, " ", 1)){
-			old_ptr++;
-		}
+            old_ptr++;
+        }
 
         word_size = current_ptr - old_ptr + 1;
 
@@ -57,10 +57,10 @@ unsigned int count_words_in_string(char* sentence, const char delimiter, List *l
     word_size = end_ptr - old_ptr + 1;
     if(word_size > 2 && word_size < MAX_WORD_SIZE){
         if(!strncmp(old_ptr, " ", 1)){
-			old_ptr++;
-		}
-		
-		send_word_to_list(old_ptr, word_size, list);
+            old_ptr++;
+        }
+
+        send_word_to_list(old_ptr, word_size, list);
         words_counter++;
     }
     return words_counter;
@@ -207,7 +207,7 @@ void test_count_words_in_string(void){
     } else {
         printf("[%s][%d] OK\n", __FUNCTION__, __LINE__);
     }
-    
+
     total_counter += test_counter;
 
     if(total_counter != (count(test_list->head) - 1)){
