@@ -66,6 +66,25 @@ unsigned int count_words_in_string(char* sentence, const char delimiter, List *l
     return words_counter;
 }
 
+/* Read the file as given argument, store word in a give list and returns the total word counter */
+unsigned int parse_text(char* text_name, List* word_list){
+    FILE* fd = NULL;
+    char line[MAX_SENTENCE_SIZE] = "";
+    int total_counter = 0;
+
+    fd = fopen(text_name, "r");
+    if(fd == NULL){
+        printf("Error opening the dictionnary, Bye!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while(fgets(line, sizeof(line), fd)){
+        total_counter += count_words_in_string(line, ' ', word_list);
+    }
+    return total_counter;
+}
+
+
 /* Read the file of the dictionnary, put name in list and return number of value; */
 unsigned int parse_dict(char* dict_name, List* word_list){
     FILE* fd = NULL;
@@ -83,7 +102,7 @@ unsigned int parse_dict(char* dict_name, List* word_list){
         unsigned int i = 0;
         read = strlen(line);
 
-        if( read <= 1){
+        if( read < 1){//peut etre read <= 1
             continue;
         }
 

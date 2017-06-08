@@ -20,6 +20,7 @@ int main(int argc, char **argv){
     }
 
     unsigned int nb_dict_word = 0;
+    unsigned int nb_text_word = 0;
 
     if(argc <= 1 || strlen(argv[1]) <= 0){
         printf("At least one argument to give\n");
@@ -27,8 +28,18 @@ int main(int argc, char **argv){
     }
 
     List* dict_list = initialisation();
+    List* text_list = initialisation();
     nb_dict_word = parse_dict(argv[1], dict_list);
     printf("There are %d words in the dictionnary\n", nb_dict_word);
+    print_list(dict_list->head);
+
+    if(argc >= 3){
+        for(i = 2; i < argc; i++){
+            nb_text_word = parse_text(argv[i], text_list);
+            printf("There are %d words in text %s\n", nb_text_word, argv[i]);
+            print_list(text_list->head);
+        }
+    }
 
     return 0;
 }
