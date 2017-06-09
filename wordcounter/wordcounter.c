@@ -38,6 +38,7 @@ int main(int argc, char **argv){
         if(stdin_string != NULL)
             free(stdin_string);
         liberate(stdin_list);
+
     }else if(argc >= 3){
         for(i = 2; i < argc; i++){
             List* text_list = initialisation();
@@ -48,6 +49,7 @@ int main(int argc, char **argv){
             liberate(text_list);
         }
     }
+
     liberate(dict_list);
     return 0;
 }

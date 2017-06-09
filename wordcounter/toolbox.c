@@ -7,7 +7,6 @@
 
 /* Return the number of words in a given sentence
  * and store them in a given chained list*/
-
 static void send_word_to_list(char* word, int size, List *list){
     char* word_in_text = (char*)malloc(sizeof(char) * (size + 1));
     snprintf(word_in_text, size, "%s", word);
@@ -43,6 +42,7 @@ char *custom_getline(FILE *fd){
     return buf;
 }
 
+/* Count number of word in a string, word are separated by a delimiter */
 unsigned int count_words_in_string(char* sentence, const char delimiter, List *list){
     unsigned int words_counter = 0;
     char* current_ptr = sentence;
