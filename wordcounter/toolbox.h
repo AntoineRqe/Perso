@@ -7,6 +7,7 @@ unsigned int count_words_in_string(char* sentence, const char delimiter, List *l
 unsigned int parse_dict(char* dict_name, List* word_list);
 unsigned int parse_text(char* text_name, List* word_list);
 char *custom_getline(FILE *fd);
+char* clean_raw_input_from_stdin(char *raw_input);
 
 /* --------------------------------------------------------------------------------
  *                                      Tests

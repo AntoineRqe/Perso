@@ -32,6 +32,7 @@ int main(int argc, char **argv){
         printf("Enter input> ");
         fflush(stdout);
         stdin_string = custom_getline(stdin);
+        stdin_string = clean_raw_input_from_stdin(stdin_string);
         nb_text_word = count_words_in_string(stdin_string, ' ', stdin_list);
         compare_list(dict_list->head, stdin_list->head);
         printf("%d \t total words\n", nb_text_word);

@@ -35,11 +35,22 @@ char *custom_getline(FILE *fd){
         last = len - 1;
     } while (!feof(fd) && buf[last] != '\n');
 
-    if(*(buf + last - 1) == '\n'){
-        *(buf + last - 1) = '\0';
-    }
-
     return buf;
+}
+
+/* Remplace EOL by space */
+char* clean_raw_input_from_stdin(char *raw_input){
+    if(raw_input == NULL)
+        return NULL;
+
+    char* clean_string = (char*)malloc(sizeof(char) * (strlen(raw_input) + 1));
+    snprintf(clean_string, strlen(raw_input) + 1, "%s", raw_input);
+    char *tmp = clean_string;
+
+    while((tmp = strchr(tmp, '\n')) != NULL){
+        *tmp = ' ';
+    }
+    return clean_string;
 }
 
 /* Count number of word in a string, word are separated by a delimiter */

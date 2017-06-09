@@ -20,7 +20,7 @@ Des tests unitaires légers sont activables avec la MACRO TEST_MODE.
 
 Limitations connues :
     - Un mot ne contient que les lettres de l'alpabet [a-zA-Z]
-    - Pas de distinction entre minuscule et majuscule.
+    - Le counter est sensible à la casse (The et the sont deux mots différents)
     - Pas de ponctuation gérée.
 
 Futures améliorations:
@@ -29,6 +29,7 @@ Futures améliorations:
     - Analyse dynamique du texte  (Aujourd'hui, on parle le texte, et l'analyse est fait ensuite).
     - Améliorer les tests unitaires (Ajout d'un framework de tests unitaires "Libcheck").
     - Beaucoup d'allocations dynamiques dans ce code, faire tourner valgrind pour une analyse des memory leak.
+    - Modulariser le code en feature.
 
 
 
