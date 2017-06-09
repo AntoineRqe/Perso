@@ -1,16 +1,16 @@
-all: main
+all: wordcounter
 
-main: main.o list.o dict.o
-		gcc -o main list.o dict.o main.o
+wordcounter: wordcounter.o list.o toolbox.o
+		gcc -o wordcounter list.o toolbox.o wordcounter.o
 
 list.o: list.c
 		gcc -o list.o -c list.c -W -Wall -Werror
 
-dict.o: dict.c
-		gcc -o dict.o -c dict.c -W -Wall -Werror
+toolbox.o: toolbox.c
+		gcc -o toolbox.o -c toolbox.c -W -Wall -Werror
 
-main.o: main.c list.h dict.h
-		gcc -o main.o -c main.c -W -Wall -Werror
+wordcounter.o: wordcounter.c list.h toolbox.h
+		gcc -o wordcounter.o -c wordcounter.c -W -Wall -Werror
 
 clean:
 		rm -rf *.o

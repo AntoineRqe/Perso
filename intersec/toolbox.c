@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "list.h"
-#include "dict.h"
+#include "toolbox.h"
 
 /* Return the number of words in a given sentence
  * and store them in a given chained list*/
@@ -103,9 +103,8 @@ unsigned int parse_text(char* text_name, List* word_list){
     }
 
     while((line = custom_getline(fd)) != NULL){
-        //printf("[debug %s %d] scanning line '%s'", __FUNCTION__, __LINE__, line);
         total_counter += count_words_in_string(line, ' ', word_list);
-        //free(line);
+        free(line);
     }
     fclose(fd);
     return total_counter;
