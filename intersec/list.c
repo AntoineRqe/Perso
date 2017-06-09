@@ -84,19 +84,19 @@ void liberate(List * list){
 }
 
 void compare_list(Element* dict_list, Element* text_list){
-	int occurence = 0;
-	while(dict_list != NULL){
-		if(strlen(dict_list->word) == 0){
-			dict_list = dict_list->next;
-			continue;
-		}
-		occurence = word_occurences(text_list, dict_list->word);
-		if(occurence > 0){
-			printf("[%s] -> %d\n", dict_list->word, occurence);
-		}
-		dict_list = dict_list->next;
-	}
-	printf("\n");
+    int occurence = 0;
+    while(dict_list != NULL){
+        if(strlen(dict_list->word) == 0){
+            dict_list = dict_list->next;
+            continue;
+        }
+        occurence = word_occurences(text_list, dict_list->word);
+        if(occurence > 0){
+            printf("[%s] -> %d\n", dict_list->word, occurence);
+        }
+        dict_list = dict_list->next;
+    }
+    printf("\n");
 }
 
 

@@ -15,8 +15,30 @@ static void send_word_to_list(char* word, int size, List *list){
     free(word_in_text);
 }
 
-/* Count the number of word in a given sentence, word splitted with a delimiter
- * and all words stored in a list. Function returns the number if words. */
+/* Own implementation of getline to read line from file descriptor without size limitation */
+static char *custom_getline(FILE *fd){
+    size_t size = 0;
+    size_t len  = 0;
+    size_t last = 0;
+    char *buf = NULL;
+
+    if(feof(fd)){
+        return buf;
+    }
+
+    do {
+        size += BUFSIZ; /* BUFSIZ is defined as "the optimal read size for this platform" */
+        buf = realloc(buf, size); /* realloc(NULL,n) is the same as malloc(n) */
+        /* Actually do the read. Note that fgets puts a terminal '\0' on the
+           end of the string, so we make sure we overwrite this */
+        if (buf == NULL) return NULL;
+        fgets(buf + last, size, fd);
+        len = strlen(buf);
+        last = len - 1;
+    } while (!feof(fd) && buf[last] != '\n');
+    return buf;
+}
+
 unsigned int count_words_in_string(char* sentence, const char delimiter, List *list){
     unsigned int words_counter = 0;
     char* current_ptr = sentence;
@@ -71,7 +93,7 @@ unsigned int count_words_in_string(char* sentence, const char delimiter, List *l
 /* Read the file as given argument, store word in a give list and returns the total word counter */
 unsigned int parse_text(char* text_name, List* word_list){
     FILE* fd = NULL;
-    char line[MAX_SENTENCE_SIZE] = "";
+    char *line = NULL;
     int total_counter = 0;
 
     fd = fopen(text_name, "r");
@@ -80,10 +102,12 @@ unsigned int parse_text(char* text_name, List* word_list){
         exit(EXIT_FAILURE);
     }
 
-    while(fgets(line, sizeof(line), fd)){
+    while((line = custom_getline(fd)) != NULL){
         //printf("[debug %s %d] scanning line '%s'", __FUNCTION__, __LINE__, line);
         total_counter += count_words_in_string(line, ' ', word_list);
+        //free(line);
     }
+    fclose(fd);
     return total_counter;
 }
 
@@ -91,7 +115,7 @@ unsigned int parse_text(char* text_name, List* word_list){
 /* Read the file of the dictionnary, put name in list and return number of value; */
 unsigned int parse_dict(char* dict_name, List* word_list){
     FILE* fd = NULL;
-    char line[MAX_WORD_SIZE] = "";
+    char *line = NULL;
     unsigned int read = 0;
 
     fd = fopen(dict_name, "r");
@@ -101,7 +125,7 @@ unsigned int parse_dict(char* dict_name, List* word_list){
         exit(EXIT_FAILURE);
     }
 
-    while(fgets(line,sizeof(line), fd)){
+    while((line = custom_getline(fd)) != NULL){
         unsigned int i = 0;
         read = strlen(line);
 

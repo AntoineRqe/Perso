@@ -1,3 +1,5 @@
+#ifndef LIST_H
+#define LIST_H
 /* Functions and structures related to chained list */
 
 typedef struct Element Element;
@@ -24,3 +26,4 @@ void compare_list(Element* dict_list, Element* text_list);
  * ------------------------------------------------------------------------------ */
 void test_chained_list(void);
 
+#endif //LIST_H

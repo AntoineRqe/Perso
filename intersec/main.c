@@ -4,7 +4,7 @@
 #include "list.h"
 #include "dict.h"
 
-#define TEST_MODE 0
+#define TEST_MODE 1
 
 void all_tests(void);
 
@@ -28,14 +28,14 @@ int main(int argc, char **argv){
 
     if(argc >= 3){
         for(i = 2; i < argc; i++){
-			List* text_list = initialisation();
+            List* text_list = initialisation();
             nb_text_word = parse_text(argv[i], text_list);
             printf("There are %d words in text %s\n", nb_text_word, argv[i]);
             compare_list(dict_list->head, text_list->head);
             liberate(text_list);
         }
     }
-	liberate(dict_list);
+    liberate(dict_list);
     return 0;
 }
 
