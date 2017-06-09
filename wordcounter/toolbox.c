@@ -12,7 +12,8 @@ static void send_word_to_list(char* word, int size, List *list){
     char* word_in_text = (char*)malloc(sizeof(char) * (size + 1));
     snprintf(word_in_text, size, "%s", word);
     insert(list, word_in_text, size);
-    free(word_in_text);
+    if(word_in_text != NULL)
+        free(word_in_text);
 }
 
 /* Own implementation of getline to read line from file descriptor without size limitation */
@@ -104,7 +105,8 @@ unsigned int parse_text(char* text_name, List* word_list){
 
     while((line = custom_getline(fd)) != NULL){
         total_counter += count_words_in_string(line, ' ', word_list);
-        free(line);
+        if(line != NULL)
+            free(line);
     }
     fclose(fd);
     return total_counter;

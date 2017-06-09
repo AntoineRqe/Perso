@@ -77,8 +77,10 @@ void liberate(List * list){
     while(list->head != NULL){
         Element *tmp = list->head;
         list->head = list->head->next;
-        free(tmp->word);
-        free(tmp);
+        if(tmp->word != NULL)
+            free(tmp->word);
+        if(tmp != NULL)
+            free(tmp);
         liberate(list);
     }
 }

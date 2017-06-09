@@ -35,7 +35,8 @@ int main(int argc, char **argv){
         nb_text_word = count_words_in_string(stdin_string, ' ', stdin_list);
         compare_list(dict_list->head, stdin_list->head);
         printf("%d \t total words\n", nb_text_word);
-        free(stdin_string);
+        if(stdin_string != NULL)
+            free(stdin_string);
         liberate(stdin_list);
     }else if(argc >= 3){
         for(i = 2; i < argc; i++){
