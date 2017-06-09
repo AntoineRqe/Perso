@@ -16,7 +16,7 @@ static void send_word_to_list(char* word, int size, List *list){
 }
 
 /* Own implementation of getline to read line from file descriptor without size limitation */
-static char *custom_getline(FILE *fd){
+char *custom_getline(FILE *fd){
     size_t size = 0;
     size_t len  = 0;
     size_t last = 0;
@@ -27,15 +27,18 @@ static char *custom_getline(FILE *fd){
     }
 
     do {
-        size += BUFSIZ; /* BUFSIZ is defined as "the optimal read size for this platform" */
-        buf = realloc(buf, size); /* realloc(NULL,n) is the same as malloc(n) */
-        /* Actually do the read. Note that fgets puts a terminal '\0' on the
-           end of the string, so we make sure we overwrite this */
+        size += BUFSIZ;
+        buf = realloc(buf, size);
         if (buf == NULL) return NULL;
         fgets(buf + last, size, fd);
         len = strlen(buf);
         last = len - 1;
     } while (!feof(fd) && buf[last] != '\n');
+
+    if(*(buf + last - 1) == '\n'){
+        *(buf + last - 1) = '\0';
+    }
+
     return buf;
 }
 
@@ -68,9 +71,6 @@ unsigned int count_words_in_string(char* sentence, const char delimiter, List *l
 
         word_size = current_ptr - old_ptr + 1;
 
-        if(word_size >= MAX_WORD_SIZE){
-            continue;
-        }
         send_word_to_list(old_ptr, word_size, list);
 
         words_counter++;
@@ -79,7 +79,7 @@ unsigned int count_words_in_string(char* sentence, const char delimiter, List *l
     }
 
     word_size = end_ptr - old_ptr + 1;
-    if(word_size > 2 && word_size < MAX_WORD_SIZE){
+    if(word_size > 2){
         if(!strncmp(old_ptr, " ", 1)){
             old_ptr++;
         }
@@ -90,7 +90,7 @@ unsigned int count_words_in_string(char* sentence, const char delimiter, List *l
     return words_counter;
 }
 
-/* Read the file as given argument, store word in a give list and returns the total word counter */
+/* Read the file text_name, store word in a give list and returns the total word counter */
 unsigned int parse_text(char* text_name, List* word_list){
     FILE* fd = NULL;
     char *line = NULL;
@@ -112,7 +112,7 @@ unsigned int parse_text(char* text_name, List* word_list){
 }
 
 
-/* Read the file of the dictionnary, put name in list and return number of value; */
+/* Read dictionnary dict_name, put name in list and return number of value; */
 unsigned int parse_dict(char* dict_name, List* word_list){
     FILE* fd = NULL;
     char *line = NULL;

@@ -92,7 +92,7 @@ void compare_list(Element* dict_list, Element* text_list){
         }
         occurence = word_occurences(text_list, dict_list->word);
         if(occurence > 0){
-            printf("[%s] -> %d\n", dict_list->word, occurence);
+            printf("%d \t %s\n", occurence, dict_list->word);
         }
         dict_list = dict_list->next;
     }

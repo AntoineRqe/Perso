@@ -4,7 +4,7 @@
 #include "list.h"
 #include "dict.h"
 
-#define TEST_MODE 1
+#define TEST_MODE 0
 
 void all_tests(void);
 
@@ -26,12 +26,24 @@ int main(int argc, char **argv){
     nb_dict_word = parse_dict(argv[1], dict_list);
     printf("There are %d words in the dictionnary %s\n\n", nb_dict_word, argv[1]);
 
-    if(argc >= 3){
+    if (argc == 2){
+        List* stdin_list = initialisation();
+        char* stdin_string = NULL;
+        printf("Enter input> ");
+        fflush(stdout);
+        stdin_string = custom_getline(stdin);
+        nb_text_word = count_words_in_string(stdin_string, ' ', stdin_list);
+        compare_list(dict_list->head, stdin_list->head);
+        printf("%d \t total words\n", nb_text_word);
+        free(stdin_string);
+        liberate(stdin_list);
+    }else if(argc >= 3){
         for(i = 2; i < argc; i++){
             List* text_list = initialisation();
             nb_text_word = parse_text(argv[i], text_list);
-            printf("There are %d words in text %s\n", nb_text_word, argv[i]);
+            printf("Wordcounter for text %s\n", argv[i]);
             compare_list(dict_list->head, text_list->head);
+            printf("%d \t total words\n", nb_text_word);
             liberate(text_list);
         }
     }
