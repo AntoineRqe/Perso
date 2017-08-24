@@ -1,0 +1,76 @@
+NOTE:  	W32DASM Ver 8.xx Series is designed for
+	Windows 95 and Windows NT 4.0.
+
+
+Windows NT 3.51 users:
+
+	W32Dasm will load and run in NT 3.51 provided that you
+	install the Windows 95 IMAGEHLP.DLL file dated
+	10/15/96 in the same directory as w32dsm89.exe.
+	The IMAGEHLP.DLL that comes with NT 3.51 will not
+	work.
+
+	NOTE: Some Dialog control formats are not supported
+	      in NT 3.51 and will result in improper control
+	      display.
+
+Windows W32s users:
+
+	W32Dasm may load and run in some configurations of
+	Windows 3.11 with W32s but the operation will be
+	unpredicable.
+
+W32Dasm Ver 8.93 Updates:(from Ver 8.5 demo)
+
+1. fixes for MMX and certain 32 and 16 bit instruction decodes.
+
+2. Added Code Patcher Assembler Feature (See Tutorial 11.0 in help file)
+
+3. Added change indicators to the CPU registers and flag displays:
+
+   	* CPU Register that change value from last instruction execute
+	  appear as CAPITAL LETTERS ie eax -> EAX
+
+	* CPU flags that changed from last instruction appear as
+	  HIGHLIGHTED text
+
+4. Added checkbox to force all rep instructions to "STEP THRU"
+   even in "STEP INTO" mode.
+
+5. Added enable/disable "Command Line Option Dialog Box" in Debugger Options.
+
+6. Added "LPSYSTEMTIME" decode in API Details logic.
+
+7. Undocumented New Feature: All Call and Jump Cross Reference Addresses may
+	be "jumped to" by double right clicking on the reference address. To
+	return to the reference, press F12.
+
+8. Undocumented New Feature: There is a new button on the Lower Left Hand
+	Debugger Window Display2 that is called "oper". This button will
+	put the Display 2 Window in a mode that will give computed values
+	of the operand/s of the current instruction.
+
+
+W32DASM Installation Instructions:
+
+1. Create a Directory ie: C:\W32DASM
+
+2. Put W32DS893.ZIP file in the created directory.
+
+3. Unzip the file.
+
+	unzipped files should include:
+
+		a. w32dsm89.exe {Full Ver 8.91 Executable}
+	       #b. w32dasm8.hlp {Help File}
+	       #c. w32dapi.lup	{API Details File}
+	       #d. PSAPI.DLL	{Required DLL  for NT}
+	       #e. IMAGEHLP.DLL	{Required DLL for NT 3.51 only}
+		f. install.txt	{This File}
+
+# W32DAPI.LUP, W32DASM8.HLP, & PSAPI.DLL must reside in same
+  directory as w32dsm89.exe. If running NT 3.51 also include
+  IMAGEHLP.DLL dated 10/15/96 in the same directory as w32dsm89.exe.
+
+
+

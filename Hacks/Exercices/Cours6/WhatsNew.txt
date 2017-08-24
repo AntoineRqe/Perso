@@ -1,0 +1,236 @@
+                RAR - What's new in the latest version
+
+
+   Version 2.71
+
+   1. Corrected a few bugs including the following Windows 2000
+      compatibility issues:
+
+      a) "New" command of Explorer context menu created zero length
+         archives, which cannot be opened by WinRAR;
+
+      b) archiving a large number of files (more than 300-400)
+         using context menu did not work.
+
+
+   Version 2.70
+
+   1. Both compression and speed have been improved for RAR archives.
+      My thanks to Alexander Khoroshev, who, once again, provided
+      invaluable assistance to improve this new version.
+
+   2. In previous versions it was necessary to have external archivers
+      to unpack CAB, ARJ and LZH files. These are now supported internally
+      by WinRAR, you no longer need to have other programs to extract
+      from these archives.
+
+   3. Internal (extraction only) support has been added for TAR,
+      GZ, ACE and UUE archives.
+
+   4. RAR and WinRAR are now able to store NTFS data streams.
+      It is especially important under Windows 2000, which uses
+      streams to keep some file dependent information such as
+      file descriptions.
+
+      Use switch -os to enable the storing of streams from
+      the command line or set the option "Save file streams"
+      in the "Archive name and parameters" dialog.
+
+      This feature is supported only for RAR archives.
+
+   5. "Archive name and parameters" dialog has been split into four
+      sections: general options, advanced options, backup options
+      and archive comment. Now it is possible to set archive password
+      or comment directly from this dialog.
+
+   6. You may save compression options to compression profiles
+      to quickly restore them later, so you may create profiles
+      for your typical archiving operations. Read the topic
+      "Compression profiles" in the "Configuration settings" chapter
+      for detailed information.
+
+   7. RAR and WinRAR are now able to store NTFS file owner, group, access
+      control and audit information under Windows NT. Note: you need to
+      have the necessary privileges in order to use this facility.
+      Use switch -ow to enable the storing and extraction of this
+      information from the command line or set the option "Save security
+      data" in the "Archive name and parameters" dialog.
+
+      This feature is supported for both RAR and ZIP archives.
+
+   8. Large disk folders are now read significantly faster in WinRAR.
+
+   9. Total progress bar is displayed when testing or extracting
+      from a single RAR archive (except volumes) or group of archives.
+
+  10. New command line switches -to<time> and -tn<time> allow to
+      process files older or newer than specified time. This feature
+      is also available in the "Backup options" of the "Archive name
+      and parameters" dialog.
+
+  11. New switch -ibck allows to run WinRAR minimzed to tray, when
+      archiving or extracting files from the command line.
+
+  12. Switch -rr and command RR are not limited to 8 recovery sectors.
+      Now the recovery record may contain up to 4096 sectors.
+
+      If the sectors number is not specified, the size of the recovery
+      information is about 1.2% of the total archive size, this usually
+      allows the recovery of up tp 0.7% of continuously damaged data 
+      of the total archive size.
+
+      Note that recovery records larger than 8 sectors cannot be used
+      by previous RAR versions.
+
+  13. "Convert to SFX" command is now supported also for ZIP archives
+      which are already in SFX format. This can be useful, if you wish
+      to replace a particular SFX module.
+
+  14. "Open archive" item is added to "Files" menu.
+
+  15. Folder time stamps are restored, when unpacking an archive
+      under Windows NT.
+
+  16. The default value of dictionary size is changed to 1024KB.
+
+  17. It is possible to specify the path to put a repaired archive
+      in WinRAR.
+
+  18. Console RAR now supports wildcards in the archive name
+      also in 'RR' command.
+
+  19. New switch -idp for console RAR disables displaying of
+      the percentage indicator. May be useful when redirecting RAR output
+      to a file.
+
+
+   Version 2.60
+
+   1. Both compression and speed have been improved for RAR archives.
+      My thanks to Alexander Khoroshev and Bulat Ziganshin for hints,
+      which allowed me to achieve this.
+
+   2. Information for registered users:
+
+      WinRAR and Rar for Linux versions 2.60 and above are registered
+      with a new, very secure, AV registration seal. The main advantage
+      of this new authenticity verification code is a significant
+      increase in the strength of the registration code and thus it's
+      use as a means of identification of the origin of a sealed archive. 
+
+      Unfortunately this also means that the old registration keyfiles
+      will not operate with the latest versions of Rar-Linux and WinRAR
+      and thus all keyfiles must be changed. This is a cost-free process
+      to the registered user.
+
+      Please read "Information for registered users of WinRAR 2.00 - 2.50"
+      in "License and registration information" section of WinRAR help
+      for detailed instructions on updating your keys.
+
+   3. Item "Registration" is removed from "Options" menu.  In order to  
+      register you need to put your key file into the WinRAR folder. 
+
+   4. Previous RAR versions were not able to handle single files and 
+      archives larger than 2 GB. This limitation does not exist any 
+      more for RAR archives.  The new limitation is slightly more than 
+      8,589,934,591 GB, that practically means "unlimited".  Note that 
+      Win-95/98 file systems cannot handle files larger than 4 GB, you 
+      need to use NTFS to work with such files. 
+
+      This improvement is valid only for RAR archives, 4 GB limitation 
+      for ZIP archives is not changed. 
+
+   5. Significantly increased speed of scanning for large numbers of 
+      files before archiving operations. Memory management also is 
+      optimized, so now it is possible to handle hundreds of thousands, 
+      or even millions of files.  WinRAR has been succesfully tested 
+      with over million files. 
+
+   6. Console RAR shows the total percentage of processed data when 
+      archiving instead of the current file percentage as before. 
+
+   7. The drive selection box is moved under toolbar buttons. You may drag 
+      it to the old position at the top right corner, if you wish. "Up" 
+      button is added before the disk selection box. 
+
+   8. New options "Cascaded context menus" and "Icons in context menus" 
+      in "Integration settings" dialog. 
+
+   9. Registration information is displayed in "About" dialog. 
+
+  10. New switch -df - "Delete files after archiving". Command
+      "rar a -df" is equal to "rar m". 
+
+  11. New switch -ag[format] - "Generate archive name using the
+      current date". Appends string "YYYYMMDDHHMMSS" or specified
+      by "format" parameter to an archive name when creating
+      an archive. Useful for daily backups. 
+
+  12. New switch -as - "Synchronize archive contents". If this switch 
+      is used when archiving, those archived files which are not 
+      present in the list of the currently added files, will be deleted 
+      from the archive. It is convenient to use this switch in 
+      combination with -u (update) to synchronize the contents of an 
+      archive and an archiving directory. For example, after the 
+      command: 
+
+      rar a -u -as backup sources\*.cpp
+
+      the archive 'backup' will contain only *.cpp files from sources 
+      folder. It looks similar to creating a new archive, but with the 
+      one important exception - if no files are modified since a last 
+      backup, this operation is performed much faster than creation of 
+      new archive. 
+
+  13. New update mode "Synchronize archive contents" in "Archive name 
+      and parameters" dialog of WinRAR allows to synchronize the 
+      contents of an archive and an archiving directory. This mode is 
+      GUI equivalent of "-u -as" switches. The result of this operation 
+      is equal to creation of a new archive, but it works much faster 
+      if no files are changed since the last update of an archive. 
+
+  14. Archives UnpSFX.rar (uncompressed SFX modules), UnRARDLL.rar 
+      (unrar.dll library), UnrarSrc.rar (unrar sources) are removed 
+      from the distributive. You can download them separately from 
+      http://www.rarsoft.com.  This is to reduce size of the WinRAR
+      package. 
+
+  15. New GUI SFX script commands:
+
+      a) "Overwrite=2" - skip all existing files without overwriting; 
+
+      b) Delete=<file> - delete the specified file in the destination 
+      folder. 
+
+  16. Command "Convert to SFX" now can be applied to an existing SFX 
+      archives to replace one SFX module with another. 
+
+  17. In the "Archive name and parameters" dialog manually entered 
+      values of the volume size now are stored in the history of the 
+      volume size field together with predefined values. 
+
+  18. "Add" button added to the "Organize favorites" dialog. 
+
+  19. "Clear log" command in "Options" menu deletes rar.log file. 
+
+  20. Minor improvements in displaying of archived files list by 
+      WinRAR: 
+
+      a) if a file is encrypted, its name is followed by 
+         an asterisk;
+
+      b) if a file is continued in next volume, its name
+         is followed by "-->";
+
+      c) if a file is continued from a previous volume, its name
+         is followed by "<--";
+
+      c) if a file is continued both in a next and from a previous
+         volume, its name is followed by "<->".
+
+  21. "Sort by original order" and "Create new folder" items
+      in the file list context menu.
+
+  22. Switch -s added to Windows SFX and WinRAR installation package.
+      It forces silent install mode skipping configuration dialog
+      and using default settings.
