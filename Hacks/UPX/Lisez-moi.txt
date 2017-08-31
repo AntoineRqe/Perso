@@ -1,0 +1,12 @@
+---------------------
+www.deamoncrack.fr.st
+---------------------
+
+Pour décompresser un programme, nommez-le '1.exe' et placez-le dans le même dossier que UPx. Puis lancez le 'decompress.bat'.
+Pour compresser un programme faîtes la même chose mais lancez 'compress.bat'.
+
+La décompression ne marche QUE pour les programmes compressés avec upx.
+
+---------------------
+www.deamoncrack.fr.st
+---------------------
