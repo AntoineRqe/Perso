@@ -7,9 +7,9 @@ roboc/Tests/.coverage
 roboc/Tests/__pycache__/
 roboc/Tests/htmlcov/
 roboc/__pycache__/
-xmco/Tests/.cache/
-xmco/Tests/.coverage
-xmco/Tests/__pycache__/
-xmco/Tests/htmlcov/
-xmco/__pycache__/
+webscraper/Tests/.cache/
+webscraper/Tests/.coverage
+webscraper/Tests/__pycache__/
+webscraper/Tests/htmlcov/
+webscraper/__pycache__/
 

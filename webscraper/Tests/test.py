@@ -8,9 +8,9 @@ from toolbox import *
 
 
 database_test = os.path.join(os.getcwd(), "Datas", "test.db")
-database_entries = [(1, 1, 0, 'https://www.xmco.fr/'),
-                    (2, 1, 1, 'https://www.xmco.fr/audits-de-securite/'),
-                    (3, 1, 1, 'https://www.xmco.fr/societe/recrutement/')]
+database_entries = [(1, 1, 0, 'https://www.netboxe.fr/'),
+                    (2, 1, 1, 'https://www.netboxe.fr/audits-de-securite/'),
+                    (3, 1, 1, 'https://www.netboxe.fr/societe/recrutement/')]
 
 
 class UnitTest(unittest.TestCase):
@@ -33,7 +33,7 @@ class UnitTest(unittest.TestCase):
         Test get_hyperlinks_from_page function
         """
 
-        test = get_urls_from_page("https://www.xmco.fr/")
+        test = get_urls_from_page("https://www.netboxe.fr/")
         self.assertIsInstance(test, list)
         self.assertNotEqual(len(test), 0)
         self.assertNotIn(None, test)
@@ -55,9 +55,9 @@ class UnitTest(unittest.TestCase):
         Test is_url_secure function
         """
 
-        self.assertEqual(is_url_secure("https://www.xmco.fr/"), 1)
-        self.assertEqual(is_url_secure("http://www.xmco.fr/"), 0)
-        self.assertEqual(is_url_secure("www.xmco.fr/"), 0)
+        self.assertEqual(is_url_secure("https://www.netboxe.fr/"), 1)
+        self.assertEqual(is_url_secure("http://www.netboxe.fr/"), 0)
+        self.assertEqual(is_url_secure("www.netboxe.fr/"), 0)
 
         with self.assertRaises(TypeError):
             is_url_secure(102)
@@ -76,11 +76,11 @@ class UnitTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             is_absolute_link("")
 
-        self.assertTrue(is_absolute_link("https://www.xmco.fr/"))
-        self.assertTrue(is_absolute_link("http://www.xmco.fr/"))
-        self.assertFalse(is_absolute_link("htt://www.xmco.fr/"))
-        self.assertFalse(is_absolute_link("www.xmco.fr/"))
-        self.assertFalse(is_absolute_link("ttps://www.xmco.fr/"))
+        self.assertTrue(is_absolute_link("https://www.netboxe.fr/"))
+        self.assertTrue(is_absolute_link("http://www.netboxe.fr/"))
+        self.assertFalse(is_absolute_link("htt://www.netboxe.fr/"))
+        self.assertFalse(is_absolute_link("www.netboxe.fr/"))
+        self.assertFalse(is_absolute_link("ttps://www.netboxe.fr/"))
         self.assertFalse(is_absolute_link("/asdfcsdfs"))
 
     def test_is_url_link_to_page(self):
@@ -88,9 +88,9 @@ class UnitTest(unittest.TestCase):
         Test is_url_link_to_page function
         """
 
-        correct_link = "https://www.xmco.fr/"
-        pdf_link = "https://www.xmco.fr/pdf.pdf"
-        mov_link = "https://www.xmco.fr/mov.mov"
+        correct_link = "https://www.netboxe.fr/"
+        pdf_link = "https://www.netboxe.fr/pdf.pdf"
+        mov_link = "https://www.netboxe.fr/mov.mov"
 
         with self.assertRaises(TypeError):
             is_url_link_to_page(102)
@@ -107,13 +107,13 @@ class UnitTest(unittest.TestCase):
         Test is_string_in_url function
         """
         with self.assertRaises(TypeError):
-            is_string_in_url(102, "https://www.xmco.fr/")
+            is_string_in_url(102, "https://www.netboxe.fr/")
 
         with self.assertRaises(ValueError):
-            is_string_in_url("", "https://www.xmco.fr/")
+            is_string_in_url("", "https://www.netboxe.fr/")
 
-        test = "www.xmco.fr"
-        self.assertTrue(is_string_in_url(test, "https://www.xmco.fr/"))
+        test = "www.netboxe.fr"
+        self.assertTrue(is_string_in_url(test, "https://www.netboxe.fr/"))
         self.assertFalse(is_string_in_url(test, "https://www.xco.fr/"))
 
     def test_create_database(self):

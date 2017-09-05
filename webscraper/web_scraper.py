@@ -3,8 +3,8 @@
 import os
 from toolbox import *
 
-xmco_url = "https://www.xmco.fr/"
-database_relative_path = os.path.join(os.getcwd(), "Datas", "xmco_urls.db")
+netboxe_url = "https://www.netboxe.fr/"
+database_relative_path = os.path.join(os.getcwd(), "Datas", "netboxe_urls.db")
 
 max_depth_level = 3
 
@@ -23,7 +23,7 @@ def main():
     url_depth_dict = dict()
     url_lists = list()
 
-    url_lists.append(xmco_url)
+    url_lists.append(netboxe_url)
     url_depth_dict[0] = url_lists
 
     for depth in range(1, (max_depth_level + 1)):

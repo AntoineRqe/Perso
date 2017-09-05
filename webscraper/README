@@ -11,7 +11,7 @@ urllib3:
 
 Run the program:
 
-python xmco_scraper.py
+python netboxe_scraper.py
 
 Run the test:
 

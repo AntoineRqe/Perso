@@ -56,7 +56,7 @@ def get_urls_from_page(parent_url):
     hyperlink_list = [url for url in hyperlink_list if
                       is_absolute_link(url) and
                       is_url_link_to_page(url) and
-                      is_string_in_url("www.xmco.fr", url) and
+                      is_string_in_url("www.netboxe.fr", url) and
                       not is_string_in_url("ailto", url) and
                       not is_string_in_url("images", url)]
 
