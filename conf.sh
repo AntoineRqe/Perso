@@ -1,6 +1,6 @@
 apt-get update
 apt-get upgrade
-apt-get install terminator geany geany-plugins git gitk ssh vim
+apt-get install terminator geany geany-plugins git gitk ssh vim netcat netstat git-gui
 git config --global alias.co checkout
 git config --global alias.ci commit
 git config --global alias.br branch
@@ -12,3 +12,4 @@ git config --global user.name "Antoine Rouquette"
 git config --global user.email "antoine.rqe@gmail.com"
 
 echo "antoine ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+echo "cd /home/antoine/Perso/rootkit" >> /root/.bashrc
