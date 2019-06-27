@@ -158,7 +158,7 @@ static int process_file(char * path, char ** output)
 
     fbuf[ftell_rval] = 0;
 
-    //process buffer
+    //Parse buffer for each new line and get the number
 
     oldline = fbuf;
     newline = fbuf;
@@ -298,10 +298,11 @@ int main(int argc, char **argv)
         goto end;
     }
 
-    // Add some verification (is it folder, does it exist)
+    // TODO: Add some verification (is it folder, does it exist)
     path = argv[1];
     path_len = strlen(path);
 
+    // Start watching given folder
     fd = inotify_init();
 
     if(fd < 0)
@@ -334,7 +335,7 @@ int main(int argc, char **argv)
             {
                 if(event->mask == IN_CREATE)
                 {
-                    
+                    // Create a fork for each file received, more scalable
                     pid_t worker = fork();
                     if(!worker)
                     {
@@ -347,6 +348,7 @@ int main(int argc, char **argv)
                         free(fullpath);
                         if(fork_ret < 0)
                             return -1;
+                        // Send Json to UDP dest
                         printf("JSON : %s\n", json_data);
                         sendto(udp_sock, json_data, strlen(json_data), 0, (const struct sockaddr *) &dest, sizeof(dest));
                         free(json_data);

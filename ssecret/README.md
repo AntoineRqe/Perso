@@ -2,6 +2,8 @@
 
 ##YAJL
 
+Library for JSON parsing/generation.
+
 ```bash
 git clone git://github.com/lloyd/yajl
 cd yajl
@@ -20,7 +22,7 @@ make
 ##Client
 
 ```bash
-./notify repertory_test 127.0.0.1 8086
+./file-parser test 127.0.0.1 8086
 ```
 
 ##Server
@@ -28,3 +30,8 @@ make
 ```bash
 nc -ul 127.0.0.1 8086
 ```
+
+#Limitation
+
+The folder should exist before starting file-parser.
+The program only check new files in folder, existing files are not processed.
