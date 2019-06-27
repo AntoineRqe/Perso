@@ -161,7 +161,7 @@ static int process_file(char * path, char ** output)
         char number[12];
         memset(number, 0, sizeof(number));
         strncpy(number, oldline, newline - oldline);
-        tab = realloc(tab, (sizeof(int) * count + 1));
+        tab = realloc(tab, (sizeof(int) * (count + 1)));
         tab[count] = strtol(number, NULL, 10);
         newline++;
         oldline = newline;
@@ -251,6 +251,7 @@ end:
         yajl_gen_free(yajl_handle);
     }
 
+    free(occurences);
     free(tab);
     free(fbuf);
     return ret;
@@ -298,7 +299,7 @@ int main(int argc, char **argv)
     }
 
     // Add some verification (is it folder, does it exist)
-    path = strdup(argv[1]);
+    path = argv[1];
     path_len = strlen(path);
 
     fd = inotify_init();
@@ -337,13 +338,16 @@ int main(int argc, char **argv)
                     pid_t worker = fork();
                     if(!worker)
                     {
-                        char * json_data = NULL;
-                        size_t fullpath_len = path_len + strlen(event->name) + 1;
-                        char * fullpath = (char *)malloc(fullpath_len + 2);
+                        int     fork_ret = -1;
+                        char *  json_data = NULL;
+                        size_t  fullpath_len = path_len + strlen(event->name) + 1;
+                        char *  fullpath = (char *)malloc(fullpath_len + 2);
                         snprintf(fullpath, fullpath_len + 1, "%s/%s", path, event->name);
-                        if(process_file(fullpath, &json_data) < 0)
+                        fork_ret = process_file(fullpath, &json_data);
+                        free(fullpath);
+                        if(fork_ret < 0)
                             return -1;
-                        printf("JSON : %s", json_data);
+                        printf("JSON : %s\n", json_data);
                         sendto(udp_sock, json_data, strlen(json_data), 0, (const struct sockaddr *) &dest, sizeof(dest));
                         free(json_data);
                         fflush(stdout);
@@ -358,8 +362,6 @@ int main(int argc, char **argv)
     ret = 0;
 
 end:
-    free(path);
-    
     if(fd)
     {
         inotify_rm_watch(fd, wd);

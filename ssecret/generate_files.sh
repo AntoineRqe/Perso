@@ -9,7 +9,12 @@ count=0
 
 while true
 do
-    echo "-2 2 0 1 -1 -2 5 8 3 -2 0 6 -5 10" >> ${DIR_PATH}/test_${count}.txt
-    count+=1
-    sleep 1
+    if [ -f ${DIR_PATH}/test_${count}.txt ]
+    then
+        rm ${DIR_PATH}/test_${count}.txt
+    fi
+    echo -e '-2\n2\n0\n1\n-1\n-2\n5\n8\n3\n-2\n0\n6\n-5\n10' >> ${DIR_PATH}/test_${count}.txt
+    echo "generated file test_${count}.txt"
+    ((count++))
+    sleep 10
 done
