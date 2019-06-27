@@ -1,6 +1,6 @@
-#Dependencies:
+# Dependencies:
 
-##YAJL
+## YAJL
 
 Library for JSON parsing/generation.
 
@@ -11,27 +11,37 @@ apt-get install cmake
 ./configure && make && make install
 ```
 
-#Compile
+# Compile
+
+* Compiled with gcc version 5.4.0 20160609
+* Compiled with clang version 3.8.0-2ubuntu4
 
 ```bash
 make
 ```
 
-#Execute
+# Execute
 
-##Client
+## Client
 
 ```bash
 ./file-parser test 127.0.0.1 8086
 ```
 
-##Server
+## Server
 
 ```bash
 nc -ul 127.0.0.1 8086
 ```
 
-#Limitation
+## Generate file
 
-The folder should exist before starting file-parser.
-The program only check new files in folder, existing files are not processed.
+```bash
+./generate_files.sh test
+```
+
+# Limitations
+
+*  The folder should exist before starting file-parser.
+
+*  The program only check new files in folder, existing files are not processed.
