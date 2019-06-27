@@ -12,7 +12,7 @@ apt-get install cmake
 #Compile
 
 ```bash
-gcc inotify-test.c -o notify -g -lyajl
+make
 ```
 
 #Execute

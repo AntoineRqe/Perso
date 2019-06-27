@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -102,14 +104,20 @@ static int count_occurences(int tab[], size_t tab_len, occurences_t ** occurs, s
 
 static int process_file(char * path, char ** output)
 {
-    int         ret         = -1;
-    char *      oldline     = NULL;
-    char *      newline     = NULL;
-    size_t      i, j        = 0;
-    size_t      count       = 0;
-    char *      fbuf        = NULL;
-    long int    ftell_rval  = 0;
-    FILE *      file        = fopen(path, "r");
+    int             ret         = -1;
+    char *          oldline     = NULL;
+    char *          newline     = NULL;
+    size_t          i           = 0;
+    size_t          count       = 0;
+    char *          fbuf        = NULL;
+    long int        ftell_rval  = 0;
+    FILE *          file        = fopen(path, "r");
+    int *           tab         = NULL;
+    occurences_t *  occurences = NULL;
+    size_t          occurences_count = 0;
+    yajl_gen        yajl_handle = yajl_gen_alloc(NULL);
+    char *          yajl_output = NULL;
+    size_t          yajl_output_len = 0;
 
     unsigned long start_time_us = get_unix_timestamp_us();
     unsigned long process_time_us = 0;
@@ -142,7 +150,7 @@ static int process_file(char * path, char ** output)
     fbuf = malloc(ftell_rval + 1);
 
     // read file
-    if(fread(fbuf, 1, ftell_rval, file) != ftell_rval)
+    if(fread(fbuf, 1, ftell_rval, file) != (size_t)ftell_rval)
     {
         printf("fread error on %s", path);
         goto end;
@@ -151,7 +159,6 @@ static int process_file(char * path, char ** output)
     fbuf[ftell_rval] = 0;
 
     //process buffer
-    int * tab = NULL;
 
     oldline = fbuf;
     newline = fbuf;
@@ -187,9 +194,6 @@ static int process_file(char * path, char ** output)
     //~ }
     //~ printf("\n");
 
-    occurences_t *  occurences = NULL;
-    size_t          occurences_count = 0;
-
     count_occurences(tab, count, &occurences, &occurences_count);
 
     process_time_us = get_unix_timestamp_us() - start_time_us;
@@ -202,11 +206,6 @@ static int process_file(char * path, char ** output)
         //~ printf("Found %zu occurences of %d\n", occurences[i].count, occurences[i].occurence);
 
     // Generate JSON string to send to dest
-    yajl_gen_status yajl_status = yajl_gen_status_ok;
-    yajl_gen        yajl_handle = yajl_gen_alloc(NULL);
-    char *          yajl_output = NULL;
-    size_t          yajl_output_len = 0;
-
     yajl_gen_map_open(yajl_handle);
 
     yajl_gen_string(yajl_handle, (const unsigned char *)"filename", strlen("filename"));
@@ -251,9 +250,10 @@ end:
         yajl_gen_free(yajl_handle);
     }
 
-    free(occurences);
-    free(tab);
-    free(fbuf);
+    if(occurences) free(occurences);
+    if(tab) free(tab);
+    if(fbuf) free(fbuf);
+
     return ret;
 }
 
@@ -261,8 +261,8 @@ int main(int argc, char **argv)
 {
     int         ret = -1;
     int         length, i = 0;
-    int         fd;
-    int         wd;
+    int         fd = -1;
+    int         wd = -1;
     char *      path = NULL;
     size_t      path_len = 0;
     char        buffer[BUF_LEN];
@@ -321,7 +321,7 @@ int main(int argc, char **argv)
 
         if(length < 0)
         {
-            if(errno == EINTR);
+            if(errno == EINTR)
             {
                 break;
             }
