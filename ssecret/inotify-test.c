@@ -11,6 +11,9 @@
 #include <sys/socket.h>
 #include <netinet/ip.h>
 
+#include <yajl/yajl_parse.h>
+#include <yajl/yajl_gen.h>
+
 #define EVENT_SIZE  (sizeof(struct inotify_event))
 #define BUF_LEN     (1024 * (EVENT_SIZE + 16))
 
@@ -97,7 +100,7 @@ static int count_occurences(int tab[], size_t tab_len, occurences_t ** occurs, s
 
 }
 
-static int process_file(char * path)
+static int process_file(char * path, char ** output)
 {
     int         ret         = -1;
     char *      oldline     = NULL;
@@ -110,6 +113,8 @@ static int process_file(char * path)
 
     unsigned long start_time_us = get_unix_timestamp_us();
     unsigned long process_time_us = 0;
+
+    *output = NULL;
 
     if(!file)
     {
@@ -166,35 +171,35 @@ static int process_file(char * path)
     if(!count)
         goto end;
 
-    printf("tab : ");
-    for(i = 0; i < count; i++)
-    {
-        printf(" %d", tab[i]);
-    }
-    printf("\n");
+    //~ printf("tab : ");
+    //~ for(i = 0; i < count; i++)
+    //~ {
+        //~ printf(" %d", tab[i]);
+    //~ }
+    //~ printf("\n");
 
     qsort(tab, count, sizeof(*tab), compare);
 
-    printf("tab : ");
-    for(i = 0; i < count; i++)
-    {
-        printf(" %d", tab[i]);
-    }
-    printf("\n");
+    //~ printf("tab : ");
+    //~ for(i = 0; i < count; i++)
+    //~ {
+        //~ printf(" %d", tab[i]);
+    //~ }
+    //~ printf("\n");
 
     occurences_t *  occurences = NULL;
     size_t          occurences_count = 0;
 
     count_occurences(tab, count, &occurences, &occurences_count);
 
-    process_time_us = get_unix_timestamp_us() - start_time;
-    printf("Processed file %s in %lu us\n", path, process_time_us);
+    process_time_us = get_unix_timestamp_us() - start_time_us;
+    //~ printf("Processed file %s in %lu us\n", path, process_time_us);
 
     if(!occurences_count)
         goto end;
 
-    for(i = 0; i < occurences_count; i++)
-        printf("Found %zu occurences of %d\n", occurences[i].count, occurences[i].occurence);
+    //~ for(i = 0; i < occurences_count; i++)
+        //~ printf("Found %zu occurences of %d\n", occurences[i].count, occurences[i].occurence);
 
     // Generate JSON string to send to dest
     yajl_gen_status yajl_status = yajl_gen_status_ok;
@@ -210,6 +215,7 @@ static int process_file(char * path)
     yajl_gen_string(yajl_handle, (const unsigned char *)"processing_time_us", strlen("processing_time_us"));
     yajl_gen_integer(yajl_handle, process_time_us);
 
+    yajl_gen_string(yajl_handle, (const unsigned char *)"occurences", strlen("occurences"));
     yajl_gen_array_open(yajl_handle);
 
     for(i = 0; i < occurences_count; i++)
@@ -220,7 +226,7 @@ static int process_file(char * path)
         yajl_gen_integer(yajl_handle, occurences[i].occurence);
 
         // Occurrences
-        yajl_gen_string(yajl_handle, (const unsigned char *)"occurences", strlen("occurences"));
+        yajl_gen_string(yajl_handle, (const unsigned char *)"count", strlen("count"));
         yajl_gen_integer(yajl_handle, occurences[i].count);
 
         yajl_gen_map_close(yajl_handle);
@@ -231,13 +237,19 @@ static int process_file(char * path)
 
     yajl_gen_get_buf(yajl_handle, (const unsigned char **)&yajl_output, &yajl_output_len);
 
-    printf("JSON : %s", yajl_output);
+    *output = strdup(yajl_output);
 
     ret = 0;
 
 end:
     if(file)
         fclose(file);
+
+    if(yajl_handle)
+    {
+        yajl_gen_clear(yajl_handle);
+        yajl_gen_free(yajl_handle);
+    }
 
     free(tab);
     free(fbuf);
@@ -325,10 +337,17 @@ int main(int argc, char **argv)
                     pid_t worker = fork();
                     if(!worker)
                     {
+                        char * json_data = NULL;
                         size_t fullpath_len = path_len + strlen(event->name) + 1;
                         char * fullpath = (char *)malloc(fullpath_len + 2);
                         snprintf(fullpath, fullpath_len + 1, "%s/%s", path, event->name);
-                        return process_file(fullpath);
+                        if(process_file(fullpath, &json_data) < 0)
+                            return -1;
+                        printf("JSON : %s", json_data);
+                        sendto(udp_sock, json_data, strlen(json_data), 0, (const struct sockaddr *) &dest, sizeof(dest));
+                        free(json_data);
+                        fflush(stdout);
+                        return 0;
                     }
                 }
             }
