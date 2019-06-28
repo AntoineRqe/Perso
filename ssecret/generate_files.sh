@@ -3,7 +3,6 @@
 DIR_PATH=$1
 
 mkdir --verbose -p ${DIR_PATH}
-rm -rf ${DIR_PATH}/*
 
 count=0
 
