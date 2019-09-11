@@ -15,3 +15,7 @@ webscraper/__pycache__/
 
 /LCD/LCD/x64/Release
 /LCD/.vs/LCD/v16
+/LCD/x64/Release/LCD.pdb
+/LCD/x64/Release/LCD.ipdb
+/LCD/x64/Release/LCD.iobj
+/LCD/x64/Release/LCD.exe
