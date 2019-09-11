@@ -13,3 +13,5 @@ webscraper/Tests/__pycache__/
 webscraper/Tests/htmlcov/
 webscraper/__pycache__/
 
+/LCD/LCD/x64/Release
+/LCD/.vs/LCD/v16

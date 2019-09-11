@@ -3,14 +3,16 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "custom_print.h"
 #include "ascii.h"
 
-int string_to_list(char* text, clist_t* head)
+int string_to_list(char* text, chained_string_t** head)
 {
 	int i = 0, offset = 0;
-	clist_t* last = head;
+	chained_string_t* tmp_head = NULL;
+	chained_string_t* last = NULL;
 
-	while (text != '\0')
+	while (text[i] != '\0')
 	{
 		if (text[i] == ' ')
 		{
@@ -19,7 +21,7 @@ int string_to_list(char* text, clist_t* head)
 		}
 		else if (!isalpha(text[i]))
 		{
-			printf("%c is not alphanumeric", text[i]);
+			PRINT_ERROR("\'%c\' is not alphanumeric", text[i]);
 			goto failure;
 		}
 
@@ -27,23 +29,21 @@ int string_to_list(char* text, clist_t* head)
 
 		if (offset < 0 || offset >= ALPHABET_COUNT)
 		{
-			printf("%c is not alphanumeric", text[i]);
+			PRINT_ERROR("\'%c\' is not in alphabed", text[i]);
 			goto failure;
 		}
 
-		if (!head)
+		chained_string_t* tmp_list = (chained_string_t*)calloc(1, sizeof(chained_string_t));
+		tmp_list->index = offset;
+		tmp_list->next = NULL;
+
+		if (!tmp_head)
 		{
-			clist_t* tmp_list = (clist_t*)calloc(1, sizeof(clist_t));
-			tmp_list->letter = alphabet_ascii[offset][0];
-			tmp_list->next = NULL;
 			last = tmp_list;
-			head = tmp_list;
+			tmp_head = tmp_list;
 		}
 		else
 		{
-			clist_t* tmp_list = (clist_t*)calloc(1, sizeof(clist_t));
-			tmp_list->letter = alphabet_ascii[offset][0];
-			tmp_list->next = NULL;
 			last->next = tmp_list;
 			last = tmp_list;
 		}
@@ -51,17 +51,19 @@ int string_to_list(char* text, clist_t* head)
 		i++;
 	}
 
+	*head = tmp_head;
+
 	return 0;
 
 failure:
-	erase_list(head);
+	erase_list(tmp_head);
 	return -1;
 }
 
-void erase_list(clist_t* head)
+void erase_list(chained_string_t* head)
 {
-	clist_t* cur = head;
-	clist_t* next = head;
+	chained_string_t* cur = head;
+	chained_string_t* next = head;
 
 	while(next)
 	{

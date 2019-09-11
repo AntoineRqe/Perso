@@ -125,6 +125,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ascii.h" />
+    <ClInclude Include="custom_print.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ascii.c" />

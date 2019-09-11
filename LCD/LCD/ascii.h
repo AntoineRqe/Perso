@@ -6,12 +6,12 @@
 
 #define GET_ASCII_OFFSET(letter) (letter - 65)
 
-typedef struct c_list_s
+typedef struct chained_string_s
 {
-	const char* letter;
-	void* next;
+	int							index;
+	struct chained_string_s*	next;
 
-}clist_t;
+} chained_string_t;
 
 static const char alphabet_ascii[ALPHABET_COUNT][ALPHABET_Y_SIZE][ALPHABET_X_SIZE] =
 {
@@ -36,5 +36,5 @@ static const char alphabet_ascii[ALPHABET_COUNT][ALPHABET_Y_SIZE][ALPHABET_X_SIZ
 
 };
 
-int string_to_list(char* text, clist_t* head);
-void erase_list(clist_t* head);
+int string_to_list(char* text, chained_string_t* head);
+void erase_list(chained_string_t* head);
