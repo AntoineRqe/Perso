@@ -9,6 +9,7 @@
 int string_to_list(char* text, chained_string_t** head)
 {
 	int i = 0, offset = 0;
+	chained_string_t* tmp_list = NULL;
 	chained_string_t* tmp_head = NULL;
 	chained_string_t* last = NULL;
 
@@ -29,11 +30,11 @@ int string_to_list(char* text, chained_string_t** head)
 
 		if (offset < 0 || offset >= ALPHABET_COUNT)
 		{
-			PRINT_ERROR("\'%c\' is not in alphabed", text[i]);
+			PRINT_ERROR("\'%c\' is not in alphabet", text[i]);
 			goto failure;
 		}
 
-		chained_string_t* tmp_list = (chained_string_t*)calloc(1, sizeof(chained_string_t));
+		tmp_list = (chained_string_t*)calloc(1, sizeof(chained_string_t));
 		tmp_list->index = offset;
 		tmp_list->next = NULL;
 

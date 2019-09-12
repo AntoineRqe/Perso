@@ -126,10 +126,12 @@
   <ItemGroup>
     <ClInclude Include="ascii.h" />
     <ClInclude Include="custom_print.h" />
+    <ClInclude Include="matrix.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ascii.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="matrix.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
