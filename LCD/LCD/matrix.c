@@ -1,3 +1,4 @@
+#include <string.h>
 #include "matrix.h"
 
 static int _get_first_display_char(int offset, int * pos, int * macro_pos)
@@ -95,5 +96,16 @@ int build_matrix(int offset, chained_string_t* head, matrix_t matrix)
 
 void dispay_matrix(matrix_t matrix)
 {
+	int x = 0, y = 0;
 
+	printf("%.*s\n", MATRIX_X_SIZE, "*******************************************************************************************************");
+
+	for (y = 0; y < MATRIX_Y_SIZE; y++)
+	{
+		for (x = 0; x < MATRIX_X_SIZE; x++)
+			printf("%d", matrix[y][x]);
+		printf("\n");
+	}
+
+	printf("%.*s\n", MATRIX_X_SIZE, "*******************************************************************************************************");
 }

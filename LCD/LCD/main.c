@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
 	chained_string_t*	head = NULL;
 	matrix_t			matrix;
 
-	PRINT_INFO("desired time on lcd? (max:9999)\n");
+	PRINT_INFO("desired time on lcd? (max:9999)");
 	if (!(fgets(input_time, sizeof(input_time), stdin)))
 	{
 		PRINT_ERROR("error reading time...");
@@ -58,6 +58,8 @@ int main(int argc, char* argv[])
 
 	if (build_matrix(time_sec, head, matrix) < 0)
 		goto failure;
+
+	dispay_matrix(matrix);
 
 	ret = 0;
 
