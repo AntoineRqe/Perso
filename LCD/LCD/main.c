@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 
 	input_text[strlen(input_text) - 1] = '\0';
 
-	PRINT_INFO("Received \"%s\" for time %d.", input_text, time_sec);
+	PRINT_DEBUG("Received \"%s\" for time %d.", input_text, time_sec);
 
 	if (string_to_list(input_text, &head) < 0)
 		goto failure;
@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
 
 	while (cur)
 	{
-		PRINT_INFO("%d letter is index %d", i, cur->index);
+		PRINT_DEBUG("%d letter is index %d", i, cur->index);
 		cur = cur->next;
 		i++;
 	}

@@ -4,6 +4,7 @@
 #define ALPHABET_COUNT	(4)
 #define ALPHABET_X_SIZE (5)
 #define ALPHABET_Y_SIZE (7)
+#define SPACE_SIZE (1)
 
 #define GET_ASCII_OFFSET(letter) (letter - 65)
 
