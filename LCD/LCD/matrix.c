@@ -50,7 +50,7 @@ int build_matrix(int time, chained_string_t* head, matrix_t matrix)
 	if (time <= 0)
 		return 0;
 
-	// Start matrix at offset
+	// Get the first letter (and letter's offset)
 	_get_first_display_char(time, &init_pos, &init_macro_pos);
 
 	PRINT_DEBUG("Init pos : %d, Init macro pos : %d", init_pos, init_macro_pos);
@@ -58,7 +58,7 @@ int build_matrix(int time, chained_string_t* head, matrix_t matrix)
 	// 1 seconde -> offset = 0
 	pos = (time - 1);
 
-	// Get the first letter to display
+	// Fetch first letter and set matrix initial position
 	if ((init_pos > 0) || ((init_pos == 0) && (init_macro_pos > 0)))
 	{
 		while (init_pos > 0)

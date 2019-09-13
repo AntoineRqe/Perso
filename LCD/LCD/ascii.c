@@ -34,7 +34,12 @@ int string_to_list(char* text, chained_string_t** head)
 			goto failure;
 		}
 
-		tmp_list = (chained_string_t*)calloc(1, sizeof(chained_string_t));
+		if (!(tmp_list = (chained_string_t*)malloc(sizeof(chained_string_t))))
+		{
+			PRINT_ERROR("impossible to allocate memory");
+			goto failure;
+		}
+
 		tmp_list->index = offset;
 		tmp_list->next = NULL;
 
