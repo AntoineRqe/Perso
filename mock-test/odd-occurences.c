@@ -6,35 +6,47 @@
 
 #define COUNT_ITEMS(A) (sizeof(A)/sizeof(A[0]))
 
-void swap(int *a, int *b)
+void swap(int * a, int * b)
 {
     int temp = *a;
     *a = *b;
     *b = temp;
 }
 
-void quicksort(int arr[], int l, int r)
+int partition(int A[], int low, int high)
+{  
+    int pivot = A[high];
+    int i = (low - 1);
+  
+    for (int j = low; j <= high - 1; j++)  
+    {  
+        if (A[j] < pivot)  
+        {  
+            i++;
+            swap(&A[i], &A[j]);  
+        }  
+    }  
+    swap(&A[i + 1], &A[high]);  
+    return (i + 1);  
+}  
+
+// O(N²) or O(NlogN)
+void quicksort(int arr[], int low, int high)
 {
-    if (l >= r)
+    while (low < high) 
     {
-        return;
-    }
-    
-    int pivot = arr[r];
-
-    int cnt = l;
-
-    for (int i = l; i <= r; i++)
-    {
-        if (arr[i] <= pivot)
-        {
-            swap(&arr[cnt], &arr[i]);
-            cnt++;
+        int pi = partition(arr, low, high); 
+        if (pi - low < high - pi) 
+        { 
+            quicksort(arr, low, pi - 1); 
+            low = pi + 1; 
+        }
+        else
+        { 
+            quicksort(arr, pi + 1, high); 
+            high = pi - 1; 
         }
     }
-    
-    quicksort(arr, l, cnt-2); // Recursively sort the left side of pivot
-    quicksort(arr, cnt, r);   // Recursively sort the right side of pivot
 }
 
 int solution(int A[], int N) {

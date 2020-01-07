@@ -1,13 +1,13 @@
-CFLAGS=-W -Wall  -Wextra -fdiagnostics-color -std=c99
-EXEC=odd-occurences
+CFLAGS=-W -Wall -Wextra -fdiagnostics-color -std=c99
+EXEC=white
 
 all: $(EXEC)
 
-odd-occurences: odd-occurences.o
-	gcc -g -o odd-occurences odd-occurences.o $(LDFLAGS)
+white: white.o
+	gcc -g -pg -o white white.o $(LDFLAGS)
 
-odd-occurences.o: odd-occurences.c
-	$(CC) -g -c odd-occurences.c $(CFLAGS)
+white.o: white.c
+	$(CC) -g -pg -c white.c $(CFLAGS)
 
 clean:
 	rm -rf *.o
