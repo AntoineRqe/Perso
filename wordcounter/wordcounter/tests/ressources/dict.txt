@@ -1,0 +1,13 @@
+bonjour
+aurevoir
+cou-cou
+#salut
+test
+#inconnu
+
+!test
+test!
+% %
+%
+
+

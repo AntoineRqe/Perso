@@ -1,0 +1,35 @@
+Compiler/Excecuter le code:
+
+    - utiliser la commande make pour invoquer le makefile
+    - lancer la commande ./wordcounter.exe parser.txt texte.txt
+    - tester sous MINGW64, GNU Make 4.2.1, Thread model: win32, GCC version 5.3.0 (GCC)
+
+
+Algorithmie du code:
+
+1) On vérifie qu'il y a au moins 1 argument donné à la fonction.
+2) On parse le dictionnaire, tous les mots sont stockés dans une liste chainée "dict_list"
+3) Deux cas de figures se présentent alors:
+        - si des textes sont donnés en arguments, on parse le texte et les mots sont stockés dans
+        une liste chainées "text_list". Chaque mot de "dict_list" est comparé avec "text_list" et le nombre
+        d'occurrences est calculé par chaque mot du dictionnaire.
+        - si aucun argument n'est donnée, on demande à l'utilisateur de saisir une phrase et l'anayse est
+        faite sur ce string.
+
+Des tests unitaires légers sont activables avec la MACRO TEST_MODE.
+
+Limitations connues :
+    - Un mot ne contient que les lettres de l'alpabet [a-zA-Z]
+    - Le counter est sensible à la casse (The et the sont deux mots différents)
+    - Pas de ponctuation gérée.
+
+Futures améliorations:
+    - Gestion de la ponctuation.
+    - Gestion de la casse des mots.
+    - Analyse dynamique du texte  (Aujourd'hui, on parle le texte, et l'analyse est fait ensuite).
+    - Améliorer les tests unitaires (Ajout d'un framework de tests unitaires "Libcheck").
+    - Beaucoup d'allocations dynamiques dans ce code, faire tourner valgrind pour une analyse des memory leak.
+    - Modulariser le code en feature.
+
+
+
