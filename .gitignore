@@ -23,3 +23,6 @@ webscraper/__pycache__/
 /.vs
 /LCD/LCD/x64/Debug
 /LCD/x64/Debug
+*/test-ledger/
+**/test-ledger/**
+*.so
