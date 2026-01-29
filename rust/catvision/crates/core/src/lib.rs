@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use crate::config::Config;
-use crate::my_traits::{Input, Output};
-use crate::{Statistics};
-use crate::format::csv::{MyCSVInput, MyCSVOutput};
-use crate::format::html;
-use crate::my_traits;
+use config::Config;
+use traits::{Input, Output};
+use statistics::{Statistics};
+use format::csv::{MyCSVInput, MyCSVOutput};
+use format::html;
 use std::fs::File;
 
 #[derive(Clone)]
@@ -40,7 +39,7 @@ impl Ctx
             prompt: String::from(""),
             dict: None,
         };
-
+            
         if ctx.config.support_csv.input {
             println!("CSV input is enabled.");
             let input = MyCSVInput::new(&ctx.input_path);
@@ -115,7 +114,7 @@ impl Ctx
     }
 
     pub fn write(&mut self, data: &dyn std::any::Any) -> Result<(), Box<dyn std::error::Error>> {
-        let infos = my_traits::Infos::new(            
+        let infos = traits::Infos::new(            
             &(self.config.model[0].clone() + " LLM Classification Results for " + &self.input_path.to_string_lossy()),
             &self.stats.generate_output_summary(),
             &self.prompt,

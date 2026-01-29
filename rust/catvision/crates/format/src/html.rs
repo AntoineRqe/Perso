@@ -2,8 +2,8 @@ use indexmap::IndexMap;
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
-use crate::my_traits::Infos;
-use crate::CatVisionData;
+use traits::Infos;
+use utils::CatVisionData;
 use itertools::Itertools;
 
 /// HTML output generator.
@@ -15,9 +15,9 @@ pub struct HTMLGenerator {
     pub columns: HashMap<String, usize>,
 }
 
-impl crate::my_traits::Output for HTMLGenerator {
+impl traits::Output for HTMLGenerator {
     /// Clone the output object.
-    fn clone_box(&self) -> Box<dyn crate::my_traits::Output> {
+    fn clone_box(&self) -> Box<dyn traits::Output> {
         Box::new(Self {
             filename: self.filename.clone(),
             columns: self.columns.clone(),

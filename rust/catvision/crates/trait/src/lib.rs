@@ -1,4 +1,4 @@
-use crate::statistics::Statistics;
+use statistics::Statistics;
 use std::path::PathBuf;
 use std::any::Any;
 

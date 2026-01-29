@@ -1,11 +1,13 @@
 use std::{collections::HashMap, fs::File, path::PathBuf};
-use crate::{category::check_category_validity, my_traits::{Infos, Input, Output}, statistics::Statistics, utils::trim_domain_by_llm};
+use utils::category::check_category_validity;
+use traits::{Infos, Input, Output};
+use statistics::Statistics;
+use utils::{trim_domain_by_llm,category::main_domain_for};
 use csv::{Reader, StringRecord};
 use indexmap::IndexMap;
 use itertools::Itertools;
-use crate::CatVisionData;
+use utils::CatVisionData;
 use std::any::Any;
-use crate::category::main_domain_for;
 
 /// CSV input handler.
 #[derive(Debug)]
@@ -70,7 +72,7 @@ impl Input for MyCSVInput {
 
         for record in rdr.records() {
             let record = record?;
-            let mut new_data = CatVisionData::new(None, None, None, None, None);
+            let mut new_data = CatVisionData::new(None, None, None, None, None, None, None);
             let domain = record.get(*self.headers.get("domain").unwrap()).unwrap().trim();
 
             if let Some(dict) = dict {

@@ -1,5 +1,5 @@
 use std::{fmt::Display, sync::atomic::{AtomicUsize, Ordering}};
-use crate::utils::seconds_to_pretty;
+use utils::seconds_to_pretty;
 use atomic_float::AtomicF64;
 
 

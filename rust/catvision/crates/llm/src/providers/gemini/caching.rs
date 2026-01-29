@@ -4,8 +4,8 @@ use reqwest::Client;
 use std::error::Error;
 use std::process::Command;
 
-use crate::llm::core::generate_cached_prompt;
-use crate::utils::env::{get_project_id};
+use crate::core::prompt::generate_cached_prompt;
+use utils::env::{get_project_id};
 
 //
 // Request structure for creating cached content

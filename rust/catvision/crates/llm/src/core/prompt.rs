@@ -1,240 +1,13 @@
-use std::{collections::HashMap};
-use std::error::Error;
-use async_scoped::TokioScope;
-use serde_json::Value;
-use tokio::runtime::{Runtime};
-use std::sync::atomic::{Ordering};
+use utils::category::{CATEGORIES};
 
-use crate::category::{CATEGORIES, check_category_validity};
-use crate::ctx::Ctx;
-
-use crate::llm::providers::gemini::generating::{async_gemini_fetch_chat_completion, GeminiResult, async_gemini_handle_cached_content};
-
-
-enum LLMResult {
-    Gemini(GeminiResult),
-}
-
-pub fn parse_llm_output(
-    domains: &[&str],
-    content: &str,
-) -> Result<HashMap<String, Vec<&'static str>>, Box<dyn std::error::Error>> {
-    // Avoid unnecessary trim/allocation
-    let content = content.trim_start_matches(|c: char| c.is_whitespace())
-                         .trim_end_matches(|c: char| c.is_whitespace());
-
-    
-    let json: Value = serde_json::from_str(content)?;
-    let obj = json.as_object().ok_or("Expected top-level JSON object")?;
-
-    // Pre allocate the result map for better performance
-    let mut result: HashMap<String, Vec<&'static str>> = HashMap::with_capacity(domains.len());
-
-    for domain in domains {
-        let value = obj.get(*domain)
-            .ok_or(format!("Domain '{}' not found in JSON", domain))?;
-
-        let arr = value.as_array()
-            .ok_or(format!("Expected array for domain '{}'", domain))?;
-
-        if arr.is_empty() {
-            return Err(format!("No categories found for domain '{}'", domain).into());
-        }
-
-        // Collect categories as &str to avoid allocations
-        let categories: Vec<String> = arr.iter()
-            .filter_map(|v| v.as_str())
-            .map(|s| s.to_string())
-            .collect();
-
-        if categories.is_empty() {
-            return Err(format!("No valid string categories for domain '{}'", domain).into());
-        }
-
-        let mut categories_ref: Vec<&'static str> = Vec::with_capacity(categories.len());
-
-        for category in &categories {
-            if let Some(valid_category) = check_category_validity(category) {
-                categories_ref.push(valid_category);
-            } else {
-                return Err(format!("Invalid category '{}' for domain '{}'", category, domain).into());
-            }
-        }
-
-        result.insert(domain.to_string(), categories_ref);
-    }
-
-    Ok(result)
-}
-
-fn write_domain_in_garbage_file(domains: &[&str], id: usize) {
-    use std::fs::OpenOptions;
-    use std::io::Write;
-
-    let garbage_file = format!("garbage_domains_{}.txt", id);
-
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&garbage_file)
-        .unwrap_or_else(|_| panic!("Unable to open {}", garbage_file));
-
-    for domain in domains {
-        writeln!(file, "{}", domain)
-            .unwrap_or_else(|_| panic!("Unable to write to {}", garbage_file));
-        println!("Written garbage domain '{}' to {}", domain, garbage_file);
-    }
-}
-
-async fn async_llm_classify_domains(
-    domains: &[&str],
-    ctx: &Ctx,
-    cache_name: &Option<String>,
-    id: usize
-) -> Result<LLMResult, Box<dyn Error + Send + Sync>> {
-
-    let mut gemini_result = GeminiResult::new();
-
-    let mut retries_chunk = 0;
-    
-    loop {
-        if retries_chunk == 3 {
-            eprintln!("Thread {} Failed to get LLM response after 3 attempts for chunk starting with domain: {}", id, domains[0]);
-            gemini_result.failed.fetch_add(domains.len(), Ordering::Relaxed);
-            write_domain_in_garbage_file(domains, id);
-            return Err("Max retries reached for LLM request".into());
-        }
-
-        match async_gemini_fetch_chat_completion(domains, &ctx, cache_name, &mut gemini_result).await {
-            Ok(()) => {
-                println!("Thread {} Successfully processed chunk starting with domain: {}", id, domains[0]);
-                break;
-            },
-            Err(e) => {
-                eprintln!("Thread {} Error during LLM request (attempt {}): {}", id, retries_chunk + 1, e);
-                retries_chunk += 1;
-                gemini_result.retried.fetch_add(1, Ordering::Relaxed);
-            }
-        };
-    }
-
-    // println!("Thread {} Final Gemini Result: {}", id, gemini_result);
-
-    Ok(LLMResult::Gemini(GeminiResult {
-        processed: gemini_result.processed,
-        retried: gemini_result.retried,
-        failed: gemini_result.failed,
-        cost: gemini_result.cost,
-        cache_saving: gemini_result.cache_saving,
-        categories: gemini_result.categories,
-    }))
-}
-
-type DynError = Box<dyn std::error::Error + Send + Sync>;
-
-async fn llm_runtime(domains: &[&str], ctx: &Ctx) -> Result<GeminiResult, DynError> {
-
-    let mut chunks = domains.chunks(ctx.config.chunk_size);
-    let mut processed_domains = 0;
-    let total_domains = domains.len();
-
-    let mut final_gemini_result = GeminiResult::new();
-
-    // We want to make sure all chunks are processed
-    while chunks.len() > 0 {
-        // Handle cached content creation or update for the next batch of chunks
-        let cache_name = match async_gemini_handle_cached_content(ctx, &mut final_gemini_result.cost).await {
-            Ok(cache_name) => cache_name,
-            Err(e) => {
-                eprintln!("Error handling cached content: {}", e);
-                while let Some(chunk) = chunks.next() {
-                    processed_domains += chunk.len();
-                    println!("Skipping LLM runtime on {} with chunk size [{}-{}]/{} due to caching error",
-                        ctx.config.model[0], processed_domains - chunk.len(), processed_domains, total_domains
-                    );
-                    final_gemini_result.failed.fetch_add(chunk.len(), Ordering::Relaxed);
-                    write_domain_in_garbage_file(chunk, 666); // Using 666 as an arbitrary ID for skipped chunks
-                }
-                break;
-            }
-        };
-    
-        let (_, results) = TokioScope::scope_and_block(|scope| {
-            for id in 0..ctx.config.max_threads {
-                if let Some(chunk) = chunks.next() {
-
-                    processed_domains += chunk.len();
-                    println!("Starting LLM runtime on {} with chunk size [{}-{}]/{}",
-                        ctx.config.model[0],
-                        processed_domains - chunk.len(),
-                        processed_domains,
-                        total_domains
-                    );
-
-                    let cache_name = &cache_name;
-
-                    scope.spawn(async move {
-                        match async_llm_classify_domains(chunk, &ctx, cache_name, id).await {
-                            Ok(LLMResult::Gemini(gemini_result)) => {
-                                Ok(gemini_result)
-                            },
-                            Err(e) => {
-                                eprintln!("Thread {} LLM classification failed: {}", id, e);
-                                Err(e)
-                            }
-                        } 
-                    });
-                } else {
-                    break;
-                }
-            }
-        });
-
-        // Process the results
-        for result in results {
-            match result {
-                Ok(Ok(gemini_result)) => {
-                    // Successfully got a result
-                    final_gemini_result.merge(&gemini_result); // or whatever you want to do
-                }
-                Ok(Err(e)) => {
-                    eprintln!("Task returned error: {}", e);
-                }
-                Err(join_error) => {
-                    eprintln!("Task panicked: {:?}", join_error);
-                }
-            }
-        }
-
-        println!(
-            "Completed LLM runtime on {} with chunk size [{}-{}]/{}",
-            ctx.config.model[0],
-            processed_domains.checked_sub(ctx.config.chunk_size * ctx.config.max_threads).unwrap_or(0),
-            processed_domains,
-            total_domains
-        );
-
-    }
-
-    println!(
-        "LLM runtime completed on {} for total domains: {}",
-        ctx.config.model[0],
-        total_domains
-    );
-
-    Ok(final_gemini_result)
-
-}
-
-pub fn sync_llm_runtime(domains: &[&str], ctx: &Ctx) -> Result<GeminiResult, DynError> {
-    // Create a new Tokio runtime
-    let rt = Runtime::new().expect("Failed to create Tokio runtime");
-
-    // Block on the async function
-    rt.block_on(llm_runtime(domains, ctx))
-}
-
-pub fn generate_full_prompt(domains: &[&str], nb_propositions: usize) -> String {
+/// Generates a full categorization prompt for the given domains.
+/// # Arguments
+/// * `domains` - A slice of domain strings to be categorized.
+/// * `nb_propositions` - The maximum number of category propositions to return per domain.
+/// # Returns
+/// A String containing the full categorization prompt.
+///
+pub fn generate_categorization_full_prompt(domains: &Vec<String>, nb_propositions: usize) -> String {
     let domains_str = domains.join("; ");
     let prompt = format!("
         Tu es un expert en catégorisation de sites web et domaines internet.
@@ -580,7 +353,7 @@ PAS de citations ou mise en forme
     prompt
 }
 
-pub fn generate_prompt_with_cached_content(domains: &[&str]) -> String {
+pub fn generate_categorization_prompt_with_cached_content(domains: &Vec<String>) -> String {
     let domains_str = domains.join("; ");
 
 let prompt = format!(
@@ -942,3 +715,48 @@ PAS de citations ou mise en forme
 
     prompt
 }
+
+pub fn generate_description_full_prompt(domains: &Vec<String>) -> String {
+    let domains_str = domains.join("\n");
+
+    format!(
+        r#"
+You are given a list of domain names.
+
+Your task is to produce an objective, factual description for each domain.
+
+IMPORTANT:
+- If the purpose of a domain is not immediately clear from general knowledge,
+  you MUST use web search (e.g. Google Search) to verify the domain’s purpose
+  before writing the description.
+- Do NOT guess or infer without verification.
+- If, after searching, the purpose is still unclear, use:
+  - "Objectif non clair" (French)
+  - "Purpose unclear" (English)
+
+STRICT OUTPUT RULES:
+- Output MUST be valid JSON only.
+- Do NOT use markdown, comments, or explanations.
+- Each domain name MUST be used exactly as provided as a JSON key.
+- For each domain, the value MUST be a JSON array with exactly two strings:
+  1. French description (index 0)
+  2. English description (index 1)
+- Descriptions must be neutral, factual, and concise (1–2 sentences).
+- Do NOT use marketing language or opinions.
+
+REQUIRED OUTPUT FORMAT (EXAMPLE):
+{{
+  "example.com": [
+    "Site web d'exemple utilisé à des fins de démonstration.",
+    "Example website used for demonstration purposes."
+  ]
+}}
+
+Domains:
+{domains}
+"#,
+        domains = domains_str
+    )
+}
+
+

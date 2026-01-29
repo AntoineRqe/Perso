@@ -1,50 +1,15 @@
 use futures::io;
 use indexmap::IndexMap;
 
-use crate::statistics::Statistics;
+use statistics::Statistics;
 use clap::Parser;
 use std::{path::PathBuf};
 use std::collections::HashMap;
-
-mod category;
-pub mod my_traits;
-pub mod format;
-mod statistics;
-mod config;
-mod ctx;
-mod llm;
-mod utils;
-
-use llm::core::{generate_full_prompt, generate_prompt_with_cached_content, sync_llm_runtime};
+use llm::core::{sync_llm_runtime};
+use llm::core::LLMCommand;
 use utils::seconds_to_pretty;
-
-#[derive(Debug, Clone)]
-/// Structure to hold various categories data for a domain
-pub struct CatVisionData {
-    pub category_olfeo: Option<&'static str>,
-    pub categories_manual: Option<&'static str>,
-    pub categories_llm: Option<Vec<&'static str>>,
-    pub appsite_name_by_olfeo: Option<String>,
-    pub appsite_name_by_gemini: Option<String>,
-}
-
-impl CatVisionData {
-    pub fn new(
-        category_olfeo: Option<&'static str>,
-        categories_manual: Option<&'static str>,
-        categories_llm: Option<Vec<&'static str>>,
-        appsite_name_by_olfeo: Option<String>,
-        appsite_name_by_gemini: Option<String>) -> Self {
-        
-        CatVisionData {
-            category_olfeo,
-            categories_manual,
-            categories_llm,
-            appsite_name_by_olfeo,
-            appsite_name_by_gemini,
-        }
-    }
-}
+use utils::CatVisionData;
+use core::Ctx;
 
 /// Aggregates original data with LLM results into a single IndexMap
 ///
@@ -76,6 +41,8 @@ fn aggregate_data(
             None,
             original_categories.appsite_name_by_olfeo,
             original_categories.appsite_name_by_gemini,
+            original_categories.description_fr_by_gemini,
+            original_categories.description_en_by_gemini,
         );
 
         if let Some(categories) = llm_data.get(domain.as_str()) {
@@ -117,23 +84,23 @@ struct Args {
     /// Input file path
     #[arg(short, long)]
     input: String,
-    #[arg(short, long)]
+    #[arg(long)]
     config: Option<String>,
-    #[arg(short, long)]
+    #[arg(long)]
     dict: Option<String>,
+    #[arg(long)]
+    command: String,
 }
 
-fn main() -> io::Result<()> {
-    // Parse command-line arguments
-    let args = Args::parse();
-    let input_file = PathBuf::from(&args.input);
-    let config_path = args.config.map(PathBuf::from);
-    let dict = args.dict.map(PathBuf::from);
+fn process_classification(
+    input_file: PathBuf,
+    config_path: Option<PathBuf>,
+    dict: Option<PathBuf>)
+     -> io::Result<()> 
+     {
 
     // Initialize context wihth input file and optional config and dictionary
-    let mut ctx = ctx::Ctx::new(&input_file, config_path, dict);
-
-    let start_time = std::time::Instant::now();
+    let mut ctx = Ctx::new(&input_file, config_path, dict);
 
     // Parse input data
     let domains = ctx
@@ -145,18 +112,14 @@ fn main() -> io::Result<()> {
     // Create domais name list from input file
     let domains_name = domains
         .keys()
-        .map(|s| s.as_str())
-        .collect::<Vec<&str>>();
- 
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
+
+    let start_time = std::time::Instant::now();
     // Generate prompt and call LLM based on caching configuration for Gemini
-    ctx.prompt = if ctx.config.use_gemini_explicit_caching {
-        generate_prompt_with_cached_content(&domains_name)
-    } else {
-        generate_full_prompt(&domains_name, ctx.config.max_domain_propositions)
-    };
 
     // Calling Gemini LLM synchronously to get categories
-    let llm_results = match sync_llm_runtime(&domains_name, &ctx) {
+    let llm_results = match sync_llm_runtime(domains_name, &ctx.config, LLMCommand::CategorizeDomains) {
         Ok(res) => res,
         Err(e) => {
             eprintln!("Error during LLM processing: {}", e);
@@ -189,4 +152,113 @@ fn main() -> io::Result<()> {
     ctx.write(&aggregated).expect("Failed to write output data");
 
     Ok(())
+}
+
+fn process_description(
+    input_file: PathBuf,
+    config_path: Option<PathBuf>,
+    dict: Option<PathBuf>,
+) -> io::Result<()> {
+      // Initialize context wihth input file and optional config and dictionary
+    let mut ctx = Ctx::new(&input_file, config_path, dict);
+
+    // Parse input data
+    let domains = ctx
+        .parse()
+        .expect("Failed to parse input CSV")
+        .downcast::<IndexMap<String, CatVisionData>>()
+        .expect("Failed to downcast parsed data to IndexMap<String, CatVisionData>>");
+    
+    // Create domais name list from input file
+    let domains_name = domains
+        .keys()
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
+
+    let start_time = std::time::Instant::now();
+    // Generate prompt and call LLM based on caching configuration for Gemini
+    ctx.prompt = String::new();
+
+    // Calling Gemini LLM synchronously to get categories
+    let llm_results = match sync_llm_runtime(domains_name, &ctx.config, LLMCommand::DescribeDomains) {
+        Ok(res) => res,
+        Err(e) => {
+            eprintln!("Error during LLM processing: {}", e);
+            return Err(io::Error::new(io::ErrorKind::Other, "LLM processing failed"));
+        }
+    };
+
+    // Update statistics based on Gemini results
+    ctx.stats.update_llm_statistics(
+        llm_results.processed,
+        llm_results.cost,
+        llm_results.retried,
+        llm_results.failed,
+        ctx.config.chunk_size,
+        ctx.config.thinking_budget
+    );
+
+
+    println!("{:?}", llm_results.descriptions);
+
+    ctx.stats.elapsed_time = start_time.elapsed();
+
+    println!("Descriptions of {} domains finished in {} for {}€",
+        ctx.stats.processed,
+        seconds_to_pretty(ctx.stats.elapsed_time.as_secs()).unwrap(),
+        ctx.stats.cost
+    );
+
+    let _ = write_descriptions_to_file(&llm_results.descriptions, "domains.json");
+
+
+    // Write categories to output files (HTML, CSV, JSON...)
+    // ctx.write(&aggregated).expect("Failed to write output data");
+
+    Ok(())
+}
+
+fn write_descriptions_to_file(
+    descriptions: &HashMap<String, HashMap<&str, String>>,
+    path: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use std::fs::File;
+    use std::io::Write;
+
+    // Open file for writing
+    let mut file = File::create(path)?;
+
+    // Serialize the HashMap to pretty JSON
+    let json = serde_json::to_string_pretty(&descriptions)?;
+
+    // Write to the file
+    file.write_all(json.as_bytes())?;
+
+    Ok(())
+}
+
+fn main() -> io::Result<()> {
+    // Parse command-line arguments
+    let args = Args::parse();
+    let input_file = PathBuf::from(&args.input);
+    let config_path = args.config.map(PathBuf::from);
+    let dict = args.dict.map(PathBuf::from);
+    let command = args.command.as_str();
+ 
+    match command {
+        "classify" => {
+            process_classification(input_file, config_path, dict)?;
+            Ok(())
+        },
+        "describe" => {
+            process_description(input_file, config_path, dict)?;
+            Ok(())
+        },
+        _ => {
+            eprintln!("Unsupported command: {}", command);
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unsupported command"));
+        }
+    }
+
+
 }

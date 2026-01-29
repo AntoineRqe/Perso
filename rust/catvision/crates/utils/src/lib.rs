@@ -2,6 +2,42 @@ use tldextract::{TldExtractor, TldOption, TldResult};
 use std::collections::HashMap;
 
 pub mod env;
+pub mod category;
+
+#[derive(Debug, Clone)]
+/// Structure to hold various categories data for a domain
+pub struct CatVisionData {
+    pub category_olfeo: Option<&'static str>,
+    pub categories_manual: Option<&'static str>,
+    pub categories_llm: Option<Vec<&'static str>>,
+    pub appsite_name_by_olfeo: Option<String>,
+    pub appsite_name_by_gemini: Option<String>,
+    pub description_fr_by_gemini: Option<String>,
+    pub description_en_by_gemini: Option<String>,
+}
+
+impl CatVisionData {
+    pub fn new(
+        category_olfeo: Option<&'static str>,
+        categories_manual: Option<&'static str>,
+        categories_llm: Option<Vec<&'static str>>,
+        appsite_name_by_olfeo: Option<String>,
+        appsite_name_by_gemini: Option<String>,
+        description_fr_by_gemini: Option<String>,
+        description_en_by_gemini: Option<String>,
+    ) -> Self {
+        
+        CatVisionData {
+            category_olfeo,
+            categories_manual,
+            categories_llm,
+            appsite_name_by_olfeo,
+            appsite_name_by_gemini,
+            description_fr_by_gemini,
+            description_en_by_gemini,
+        }
+    }
+}
 
 /// Converts a duration in seconds to a human-readable string format
 /// # Arguments
@@ -92,23 +128,4 @@ pub fn trim_domain_by_llm(dict: &HashMap<String, String>, domain: &str) -> (Opti
     }
 
     (Some(root_domain), llm_classification)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ctx::Ctx;
-    use std::path::PathBuf;
-
-    #[test]
-    fn test_trim_domain_by_olfeo() {
-        let input_domain = "gateway.bingviz.microsoftapp.net";
-        let expected_output = Some("gateway.bingviz.microsoftapp.net".to_string());
-
-        let config_path = None;
-        let ctx = Ctx::new(&PathBuf::from("dummy_input.csv"), config_path, Some(PathBuf::from("/home/anr-cv/outputs/microsoft_subdomains.gemini-2.5-flash-chunk_100-thinking_1024.csv")));
-        
-        let result = trim_domain_by_llm(&ctx.dict.unwrap(), input_domain);
-        assert_eq!(result.0, expected_output);
-    }
 }

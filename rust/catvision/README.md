@@ -44,6 +44,8 @@ cargo run --release -- --input ~/microsoft.csv --config configs/config-prod.json
 | `--config`  | Path to the JSON configuration file     | Yes      |
 | `--dict`    | Path to the dictionary file (optional)  | No       |
 | `--verbose` | Enable verbose logging (optional)       | No       |
+| `--command` | Command to execute (required) (e.g., classify or describe)          | Yes      |
+
 
 ---
 
@@ -145,5 +147,5 @@ cargo build
 Run with example data:
 
 ```bash
-cargo run -- --input ./data/example.csv --config ./configs/config-prod.json
+cargo run -- --input ./data/example.csv --config ./configs/config-prod.json --command classify
 ```

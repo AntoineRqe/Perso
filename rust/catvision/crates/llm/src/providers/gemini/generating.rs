@@ -3,10 +3,16 @@ use std::error::Error;
 
 use super::caching;
 use super::billing;
-use crate::llm::core::{generate_prompt_with_cached_content, generate_full_prompt, parse_llm_output}; 
+use crate::core::prompt::{
+    generate_categorization_full_prompt,
+    generate_categorization_prompt_with_cached_content,
+    generate_description_full_prompt,
+};
 
-use crate::ctx::Ctx;
-use crate::llm::providers::gemini::network::{GeminiApiCall};
+use crate::core::description::parse_description_output;
+use crate::core::categorization::parse_categorization_output;
+use crate::core::LLMCommand; 
+use crate::providers::gemini::network::{GeminiApiCall};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use atomic_float::AtomicF64;
@@ -19,6 +25,7 @@ pub struct GeminiResult {
     pub cost: AtomicF64,
     pub cache_saving: AtomicF64,
     pub categories: HashMap<String, Vec<&'static str>>,
+    pub descriptions: HashMap<String, HashMap<&'static str, String>>,
 }
 
 impl GeminiResult {
@@ -29,7 +36,8 @@ impl GeminiResult {
             retried: AtomicUsize::new(0),
             cost: AtomicF64::new(0.0),
             cache_saving: AtomicF64::new(0.0),
-            categories: HashMap::with_capacity(4000000),
+            categories: HashMap::with_capacity(10000),
+            descriptions: HashMap::with_capacity(10000),
         }
     }
 
@@ -45,6 +53,11 @@ impl GeminiResult {
                 .or_insert_with(Vec::new)
                 .extend(categories.iter().cloned());
         }
+        for (domain, descriptions) in &other.descriptions {
+            self.descriptions.entry(domain.clone())
+                .or_insert_with(HashMap::new)
+                .extend(descriptions.iter().map(|(k, v)| (*k, v.clone())));
+        }
     }
 }
 
@@ -57,19 +70,7 @@ impl Clone for GeminiResult {
             cost: AtomicF64::new(self.cost.load(Ordering::Release)),
             cache_saving: AtomicF64::new(self.cache_saving.load(Ordering::Release)),
             categories: self.categories.clone(),
-        }
-    }
-}
-
-impl Default for GeminiResult {
-    fn default() -> Self {
-        Self {
-            processed: AtomicUsize::new(0),
-            failed: AtomicUsize::new(0),
-            retried: AtomicUsize::new(0),
-            cost: AtomicF64::new(0.0),
-            cache_saving: AtomicF64::new(0.0),
-            categories: HashMap::with_capacity(4000000),
+            descriptions: self.descriptions.clone(),
         }
     }
 }
@@ -122,15 +123,18 @@ fn check_cache_expire_time(expire_time_str: &str, minutes: i64) -> Result<bool, 
 /// * `cost` - Mutable reference to accumulate cost
 /// # Returns
 /// * `Result<Option<String>, Box<dyn Error + Send + Sync>>` - Ok(Some(cache_name)) if cached content is used or created, Ok(None) if not using caching, or an error
-pub async fn async_gemini_handle_cached_content(ctx: &Ctx, cost: &mut AtomicF64) -> Result<Option<String>, Box<dyn Error + Send + Sync>> {
-    if ctx.config.use_gemini_explicit_caching {
+pub async fn async_gemini_handle_cached_content(config: &GeminiConfig, cost: &mut AtomicF64) -> Result<Option<String>, Box<dyn Error + Send + Sync>> {
+    if config.use_gemini_explicit_caching {
         let cache_contents = caching::list_cached_contents().await?;
         let cache_content_name = match cache_contents.cached_contents {
             Some(cached_list) => {
                 let cache = cached_list.first().unwrap();
                 if let Some(expire_time) = &cache.expire_time {
                     if check_cache_expire_time(expire_time, 1)? {
-                        let cache_content = caching::async_gemini_update_cached_content_ttl(&cache.name, ctx.config.use_gemini_custom_cache_duration.as_ref().unwrap().clone()).await?;
+                        let cache_content = caching::async_gemini_update_cached_content_ttl(
+                            &cache.name,
+                        config.use_gemini_custom_cache_duration.as_ref().unwrap().clone()
+                    ).await?;
                         let cache_cost = billing::CacheCostResult::new(cache_content.usage.unwrap()).compute_cost();
                         cost.fetch_add(cache_cost.eur, Ordering::Relaxed);
                         println!("Updated cached contents with name : {}.", cache_content.name);
@@ -142,7 +146,7 @@ pub async fn async_gemini_handle_cached_content(ctx: &Ctx, cost: &mut AtomicF64)
                 cache.name.clone()
             },
             None => {
-                let cache_content = caching::async_gemini_create_cached_content(&ctx.config.model[0], ctx.config.max_domain_propositions, ctx.config.use_gemini_custom_cache_duration.clone()).await?;
+                let cache_content = caching::async_gemini_create_cached_content(&config.model, config.max_domain_propositions,   config.use_gemini_custom_cache_duration.clone()).await?;
                 let cache_cost = billing::CacheCostResult::new(cache_content.usage.unwrap()).compute_cost();
                 cost.fetch_add(cache_cost.eur, Ordering::Relaxed);
                 println!("Created cached contents with name : {}.", cache_content.name);
@@ -155,37 +159,58 @@ pub async fn async_gemini_handle_cached_content(ctx: &Ctx, cost: &mut AtomicF64)
     }
 }
 
+pub struct GeminiConfig {
+    pub model: String,
+    pub prompt: String,
+    pub cache_name: Option<String>,
+    pub use_url_context: bool,
+    pub use_google_search: bool,
+    pub thinking_budget: i64,
+    pub use_gemini_explicit_caching: bool,
+    pub use_gemini_custom_cache_duration: Option<String>,
+    pub max_domain_propositions: usize,
+}
+
 /// Fetches chat completion from Gemini asynchronously
 /// # Arguments
 /// * `domains` - Slice of domain names to process
-/// * `ctx` - Reference to the context containing configuration
+/// * `config` - Reference to the Gemini configuration
 /// * `cache_name` - Optional cache name for using cached content
 /// * `my_result` - Mutable reference to accumulate Gemini results
 /// # Returns
 /// * `Result<(), Box<dyn Error>>` - Ok(()) if successful, or an error
 pub async fn async_gemini_fetch_chat_completion(
-    domains: &[&str],
-    ctx: &Ctx,
+    domains: Vec<String>,
+    config: &GeminiConfig,
     cache_name : &Option<String>,
-    my_result: &mut GeminiResult
-) -> Result<(), Box<dyn Error>> {
+    my_result: &mut GeminiResult,
+    command: &LLMCommand,
+    client: &reqwest::Client,
+) -> Result<Vec<String>, Box<dyn Error>> {
 
-    let user_prompt = if cache_name.is_some() {
-        generate_prompt_with_cached_content(domains)
-    } else {
-        generate_full_prompt(domains, ctx.config.max_domain_propositions)  
+    let user_prompt = match command {
+        LLMCommand::CategorizeDomains => {
+            if cache_name.is_some() {
+                generate_categorization_prompt_with_cached_content(&domains)
+            } else {
+                generate_categorization_full_prompt(&domains, config.max_domain_propositions)  
+            }
+        },
+        LLMCommand::DescribeDomains => {
+            generate_description_full_prompt(&domains)   
+        },
     };
 
     let generating_api_call = GeminiApiCall::Generate{
-        model: ctx.config.model[0].clone(),
+        model: config.model.clone(),
         prompt: user_prompt,
         cache_name: cache_name.clone(),
-        use_url_context: ctx.config.use_gemini_url_context,
-        use_google_search: ctx.config.use_gemini_google_search,
-        thinking_budget: ctx.config.thinking_budget,
+        use_url_context: config.use_url_context,
+        use_google_search: config.use_google_search,
+        thinking_budget: config.thinking_budget,
     };
 
-    let result = generating_api_call.process_request().await?;
+    let result = generating_api_call.process_request(client).await?;
 
     let cost = billing::CostResult::new(&result.usage_metadata).compute_cost();
     my_result.cost.fetch_add(cost.eur, Ordering::Relaxed);
@@ -197,14 +222,44 @@ pub async fn async_gemini_fetch_chat_completion(
                 return Err("No content in the response message.".into());
             },
             Some(content) => {
-                match parse_llm_output(domains, content.text.as_deref().unwrap_or("")) {
-                    Ok(categories) => {
-                        my_result.categories.extend(categories);
-                        my_result.processed.fetch_add(domains.len(), Ordering::Relaxed);
-                        Ok(())
+                let response = content.text.as_deref().unwrap_or("");
+                println!("LLM Response: {}", response);
+                match command {
+                    LLMCommand::CategorizeDomains => {
+                        match parse_categorization_output(domains.clone(), response) {
+                            Ok((valid, errors)) => {
+                                my_result.processed.fetch_add(valid.len(), Ordering::Relaxed);
+                                my_result.categories.extend(valid);
+                                
+                                if errors.len() > 0 {
+                                    my_result.failed.fetch_add(errors.len(), Ordering::Relaxed);
+                                    Ok(errors.keys().cloned().collect()) // Return list of domains that failed
+                                } else {
+                                    Ok(vec![])
+                                }
+                            },
+                            Err(e) => {
+                                return Err(format!("Error parsing LLM output : {}", e).into());
+                            }
+                        }
                     },
-                    Err(e) => {
-                        return Err(format!("Error parsing LLM output : {}", e).into());
+                    LLMCommand::DescribeDomains => {
+                        match parse_description_output(domains.clone(), response) {
+                            Ok((valid, errors)) => {
+                                my_result.processed.fetch_add(valid.len(), Ordering::Relaxed);
+                                my_result.descriptions.extend(valid);
+                                
+                                if errors.len() > 0 {
+                                    my_result.failed.fetch_add(errors.len(), Ordering::Relaxed);
+                                    Ok(errors.keys().cloned().collect()) // Return list of domains that failed
+                                } else {
+                                    Ok(vec![])
+                                }
+                            },
+                            Err(e) => {
+                                return Err(format!("Error parsing LLM output : {}", e).into());
+                            }
+                        }
                     }
                 }
             }

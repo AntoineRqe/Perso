@@ -2,9 +2,9 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap};
 use rand::prelude::*;
-use crate::utils::env::get_api_key;
-
+use utils::env::get_api_key;
 use super::caching::CachingRequest;
+use std::time::Duration;
 
 #[allow(dead_code)]
 /// Enum representing different Gemini API calls
@@ -19,10 +19,30 @@ pub enum GeminiApiCall {
     },
     Caching(CachingRequest),
 }
-    
+
+#[derive(Debug, Clone)]
+pub struct GeminiNetworkClient {
+    pub client: Vec<Client>,
+}
+
+impl GeminiNetworkClient {
+    pub fn new(num_clients: usize) -> Self {
+        let mut clients = Vec::with_capacity(num_clients);
+        for _ in 0..num_clients {
+            let client = reqwest::Client::builder()
+                .timeout(Duration::from_secs(60))
+                .build()
+                .expect("Failed to create slow HTTP client");
+            clients.push(client);
+        }
+
+        GeminiNetworkClient {
+            client: clients,
+        }
+    }
+}
 
 
-const API_ENDPOINT: &str = "aiplatform.googleapis.com";
 
 /// Generates a random seed for the LLM request
 pub fn generate_seed() -> i32 {
@@ -31,12 +51,11 @@ pub fn generate_seed() -> i32 {
 }
 
 impl GeminiApiCall {
-    pub async fn process_request(&self) -> Result<ApiResponse, Box<dyn std::error::Error>> {
-        let client: Client = Client::new();
-
+    pub async fn process_request(&self, client: &Client) -> Result<ApiResponse, Box<dyn std::error::Error>> {
+    
         match self {
             GeminiApiCall::Generate{model, prompt, cache_name, use_url_context, use_google_search, thinking_budget} => {
-                GeminiApiCall::generate_chat_completion(&self, &client, model, prompt, cache_name.clone(), *use_url_context, *use_google_search, *thinking_budget).await
+                GeminiApiCall::generate_chat_completion(&self, client, model, prompt, cache_name.clone(), *use_url_context, *use_google_search, *thinking_budget).await
             }
             GeminiApiCall::Caching(_caching_request) => {
                 Err("Caching API call not implemented".into())
@@ -69,10 +88,11 @@ impl GeminiApiCall {
         thinking_budget: i64) 
         -> Result<ApiResponse, Box<dyn std::error::Error>> {
 
+        static API_BASE:  &str = "aiplatform.googleapis.com";
 
         let url = format!(
             "https://{}/v1/publishers/google/models/{}:generateContent?key={}",
-            API_ENDPOINT,                    // e.g. "us-central1-aiplatform.googleapis.com"
+            API_BASE,                    // e.g. "us-central1-aiplatform.googleapis.com"
             model,                           // e.g. "gemini-2.5-flash"
             get_api_key()                    // Your API key
         );
@@ -125,15 +145,18 @@ impl GeminiApiCall {
                 presence_penalty: None,
                 frequency_penalty: None,
                 stop_sequences: None,
-                response_mime_type: Some("application/json".to_string()),
-                response_schema: 
-                    ResponseSchema {
-                        schema_type: "object".into(),
-                        additional_properties: AdditionalProperties {
-                            value_type: "array".into(),
-                            items: Items { item_type: "string".into() }
-                        }
-                    },
+                // response_mime_type: Some(String::from("application/json")),
+                // response_schema: Some(ResponseSchema {
+                //     schema_type: String::from("object"),
+                //     additional_properties: AdditionalProperties {
+                //         value_type: String::from("array"),
+                //         items: Items {
+                //             item_type: String::from("string"),
+                //         },
+                //     },
+                // }),
+                response_mime_type: None,
+                response_schema: None,
                 seed: Some(generate_seed() as i32),
                 response_logprobs: None,
                 logprobs: None,
@@ -351,7 +374,7 @@ pub struct GenerationConfig {
     pub response_mime_type: Option<String>,
 
     #[serde(rename = "responseSchema")]
-    pub response_schema: ResponseSchema,
+    pub response_schema: Option<ResponseSchema>,
 
     pub seed: Option<i32>,
 
@@ -548,17 +571,17 @@ pub struct WebChunk {
 pub struct GroundingSupport {
     pub segment: Segment,
     #[serde(rename = "groundingChunkIndices")]
-    pub grounding_chunk_indices: Vec<usize>,
+    pub grounding_chunk_indices: Option<Vec<usize>>,
     #[serde(rename = "confidenceScores")]
-    pub confidence_scores: Vec<f32>,
+    pub confidence_scores: Option<Vec<f32>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Segment {
     #[serde(rename = "startIndex")]
-    pub start_index: usize,
+    pub start_index: Option<usize>,
     #[serde(rename = "endIndex")]
-    pub end_index: usize,
+    pub end_index: Option<usize>,
     pub text: String,
 }
 
