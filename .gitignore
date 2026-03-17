@@ -26,3 +26,8 @@ webscraper/__pycache__/
 */test-ledger/
 **/test-ledger/**
 *.so
+*.cmd
+*.o
+*.ko
+*.mod
+*.symvers
