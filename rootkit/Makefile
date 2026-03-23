@@ -1,7 +1,7 @@
 ifneq ($(KERNELRELEASE),)
 
 # Build one module from multiple source files
-obj-m := syscall.o
+obj-m := rootkit.o
 
 else
 

